@@ -3,6 +3,52 @@ Athena CLI
 
 Presto-like CLI tool for AWS Athena.
 
+Usage
+-----
+
+```shell
+$ athena
+```
+
+```sql
+athena> help
+
+Supported commands:
+QUIT
+SELECT
+ALTER DATABASE <schema>
+ALTER TABLE <table>
+CREATE DATABASE <schema>
+CREATE TABLE <table>
+DESCRIBE <table>
+DROP DATABASE <schema>
+DROP TABLE <table>
+MSCK REPAIR TABLE <table>
+SHOW COLUMNS FROM <table>
+SHOW CREATE TABLE <table>
+SHOW DATABASES [LIKE <pattern>]
+SHOW PARTITIONS <table>
+SHOW TABLES [IN <schema>] [<pattern>]
+SHOW TBLPROPERTIES <table>
+USE [<catalog>.]<schema>
+VALUES row [, ...]
+
+See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
+
+athena> use clean;
+athena:clean> show tables;
+tab_name86a314-ecda-45e9-aec1-b0a3c4d7f1e2, SUCCEEDED
+-------------
+elb_logs_raw_native
+elb_logs_raw_native_part
+(2 rows)
+
+Query b586a314-ecda-45e9-aec1-b0a3c4d7f1e2, SUCCEEDED
+https://eu-west-1.console.aws.amazon.com/athena/home?force&region=eu-west-1#query/history/b586a314-ecda-45e9-aec1-b0a3c4d7f1e2
+Time: 0:00:01, CPU Time: 1150ms total, Data Scanned: 0.00B, Cost: $0.00
+
+```
+
 
 License
 -------
