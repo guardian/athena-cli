@@ -3,6 +3,22 @@ Athena CLI
 
 Presto-like CLI tool for AWS Athena.
 
+Installation
+------------
+
+Using `pip` install then run:
+
+    $ pip install athena-cil
+
+Or, clone the GitHub repo and run:
+
+    $ python setup.py install
+
+Configuration
+-------------
+
+Only required configuration is AWS credentials.
+
 Usage
 -----
 
@@ -49,6 +65,24 @@ Time: 0:00:01, CPU Time: 1150ms total, Data Scanned: 0.00B, Cost: $0.00
 
 ```
 
+Troubleshooting
+---------------
+
+Turn on debug at the `athena>` prompt by typing:
+
+```
+athena> set debug true
+debug - was: False
+now: True
+```
+
+Command history is written to `~/.athena_history`.
+
+References
+----------
+
+  * PrestoDB: https://prestodb.io/docs/current/
+  * AWS Athena: https://aws.amazon.com/athena/
 
 License
 -------
