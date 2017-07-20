@@ -1,14 +1,14 @@
 
 from setuptools import setup, find_packages
 
-version = '0.0.1'
+version = '0.0.2'
 
 setup(
     name="athena-cli",
     version=version,
     description='Presto-like CLI for AWS Athena',
-    url='https://github.com/guardian/ophan-data-lake',
-    license='MIT',
+    url='https://github.com/guardian/athena-cli',
+    license='Apache License 2.0',
     author='Nick Satterly',
     author_email='nick.satterly@theguardian.com',
     packages=find_packages(),
