@@ -23,7 +23,20 @@ Usage
 -----
 
 ```shell
-$ athena
+$ athena --help
+usage: athena [--debug] [--execute <execute>] [--output-format <output-format>] [--schema <schema>] [--version] [--region <region>] [--s3-bucket <bucket>]
+
+Athena interactive console
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --debug
+  --execute EXECUTE
+  --output-format FORMAT
+  --schema SCHEMA, --database SCHEMA, --db SCHEMA
+  --version
+  --region REGION
+  --s3-bucket BUCKET, --bucket BUCKET
 ```
 
 ```sql
