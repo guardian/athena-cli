@@ -27,6 +27,6 @@ setup(
     },
     keywords='aws athena presto cli',
     classifiers=[
-        'Topic :: System :: BigData'
+        'Topic :: Utilities'
     ]
 )
