@@ -103,3 +103,5 @@ ENV/
 # Intellij
 .idea/
 
+.DS_Store
+
