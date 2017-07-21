@@ -8,7 +8,7 @@ Installation
 
 Using `pip` install then run:
 
-    $ pip install athena-cil
+    $ pip install athena-cli
 
 Or, clone the GitHub repo and run:
 
