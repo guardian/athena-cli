@@ -1,6 +1,8 @@
-1. config -- region and bucket name
+TODO
+1. use aws profile for region and bucket name
 2. command line options eg. execute and output-format
 3. verify all command line options
 4. verify data and cost calcuation
 5. fix version number in main file
 6. table formatting (see https://bitbucket.org/astanin/python-tabulate/pull-requests/35/add-presto-cli-table-format/diff)
+7. pager eg. less
