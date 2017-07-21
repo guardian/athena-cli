@@ -6,3 +6,4 @@ TODO
 5. fix version number in main file
 6. table formatting (see https://bitbucket.org/astanin/python-tabulate/pull-requests/35/add-presto-cli-table-format/diff)
 7. pager eg. less
+8. add tests and integrate with Travis-ci
