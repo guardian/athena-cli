@@ -5,6 +5,7 @@ import sys
 import argparse
 import atexit
 import readline
+import subprocess
 import uuid
 import time
 import json
@@ -15,11 +16,9 @@ import cmd2 as cmd
 from botocore.exceptions import ClientError, ParamValidationError
 from tabulate import tabulate
 
-AWS_REGION = 'eu-west-1'  # FIXME: use region in profile
-S3_RESULTS_BUCKET = 's3://ophan-query-results'  # FIXME: use profile eg. s3://<profile>-query-results
 HISTORY_FILE_SIZE = 500
 
-__version__ = '0.0.3'
+__version__ = '0.0.4'
 
 del cmd.Cmd.do_show
 
@@ -29,7 +28,7 @@ class AthenaShell(cmd.Cmd):
     multilineCommands = ['WITH', 'SELECT', 'ALTER', 'CREATE', 'DESCRIBE', 'DROP', 'MSCK', 'SHOW', 'USE', 'VALUES']
     allow_cli_args = False
 
-    def __init__(self, region, bucket, db=None, format=None, debug=False):
+    def __init__(self, profile, region, bucket, db=None, format=None, debug=False):
         cmd.Cmd.__init__(self)
 
         self.region = region
@@ -41,7 +40,8 @@ class AthenaShell(cmd.Cmd):
         self.execution_id = None
         self.row_count = 0
 
-        self.athena = boto3.client('athena')
+        session = boto3.Session(profile_name=profile)
+        self.athena = session.client('athena')
         self.set_prompt()
 
         self.hist_file = os.path.join(os.path.expanduser("~"), ".athena_history")
@@ -260,14 +260,15 @@ def main():
         action='store_true'
     )
     parser.add_argument(
-        '--region',
-        default=AWS_REGION
+        '--profile'
+    )
+    parser.add_argument(
+        '--region'
     )
     parser.add_argument(
         '--s3-bucket',
         '--bucket',
-        dest='bucket',
-        default=S3_RESULTS_BUCKET
+        dest='bucket'
     )
     args = parser.parse_args()
 
@@ -278,7 +279,14 @@ def main():
         print('Athena CLI %s' % __version__)
         sys.exit()
 
-    shell = AthenaShell(args.region, args.bucket, args.schema, args.format, args.debug)
+    profile = args.profile or os.environ.get('AWS_DEFAULT_PROFILE', None)
+    region = args.region or os.environ.get('AWS_DEFAULT_REGION', None) or \
+        subprocess.check_output('aws configure get region --profile {}'.format(profile or 'default'), shell=True).rstrip()
+
+    account_id=subprocess.check_output('aws sts get-caller-identity --output text --query \'Account\' --profile {}'.format(profile or 'default'), shell=True).rstrip()
+    bucket = args.bucket or 's3://{}-query-results-{}-{}'.format(profile or 'aws-athena', account_id, region)
+
+    shell = AthenaShell(profile, region, bucket, args.schema, args.format, args.debug)
     shell.cmdloop_with_cancel()
 
 if __name__ == '__main__':
