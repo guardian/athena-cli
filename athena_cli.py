@@ -19,7 +19,7 @@ AWS_REGION = 'eu-west-1'  # FIXME: use region in profile
 S3_RESULTS_BUCKET = 's3://ophan-query-results'  # FIXME: use profile eg. s3://<profile>-query-results
 HISTORY_FILE_SIZE = 500
 
-__version__ = '0.0.2'
+__version__ = '0.0.3'
 
 del cmd.Cmd.do_show
 
@@ -140,8 +140,20 @@ See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
         sys.stdout.flush()
 
         if status == 'SUCCEEDED':
-            print(tabulate([x for x in self._get_query_results()], headers=self.headers, tablefmt=self.format))
-            print('(%s rows)\n' % self.row_count)
+            results = self._get_query_results()
+            headers = [h['Name'] for h in results['ResultSet']['ResultSetMetadata']['ColumnInfo']]
+            row_count = len(results['ResultSet']['Rows'])
+
+            def yield_rows():
+                for row in results['ResultSet']['Rows']:
+                    # https://forums.aws.amazon.com/thread.jspa?threadID=256505
+                    if row['Data'][0].get('VarCharValue', None) == headers[0]:
+                        self.row_count -= 1
+                        continue
+                    yield [d.get('VarCharValue', 'NULL') for d in row['Data']]
+
+            print(tabulate([x for x in yield_rows()], headers=headers, tablefmt=self.format))
+            print('(%s rows)\n' % row_count)
 
         print('Query {0}, {1}'.format(self.execution_id, status))
         if status == 'FAILED':
@@ -196,14 +208,7 @@ See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
         if self.debug:
             print(json.dumps(results, indent=2))
 
-        self.headers = [h['Name'] for h in results['ResultSet']['ResultSetMetadata']['ColumnInfo']]
-        self.row_count = len(results['ResultSet']['Rows'])
-
-        for row in results['ResultSet']['Rows']:
-            if row['Data'][0].get('VarCharValue', None) == self.headers[0]:  # https://forums.aws.amazon.com/thread.jspa?threadID=256505
-                self.row_count -= 1
-                continue
-            yield [d.get('VarCharValue', 'NULL') for d in row['Data']]
+        return results
 
     def _stop_query_execution(self):
         try:
