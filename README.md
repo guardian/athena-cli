@@ -81,6 +81,17 @@ Time: 0:00:01, CPU Time: 1150ms total, Data Scanned: 0.00B, Cost: $0.00
 Troubleshooting
 ---------------
 
+Use the `--debug` option when launching the `athena` CLI to get AWS debug output:
+
+```shell
+$ athena --debug
+2017-07-21 10:10:45,477 botocore.credentials [DEBUG] Looking for credentials via: env
+2017-07-21 10:10:45,478 botocore.credentials [DEBUG] Looking for credentials via: assume-role
+2017-07-21 10:10:45,478 botocore.credentials [DEBUG] Looking for credentials via: shared-credentials-file
+2017-07-21 10:10:45,479 botocore.credentials [INFO] Found credentials in shared credentials file: ~/.aws/credentials
+...
+```
+
 Turn on debug at the `athena>` prompt by typing:
 
 ```
