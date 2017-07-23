@@ -20,7 +20,7 @@ from tabulate_presto import tabulate
 LESS = "less -FXRSn"
 HISTORY_FILE_SIZE = 500
 
-__version__ = '0.0.5'
+__version__ = '0.0.6'
 
 
 class AthenaBatch(object):
@@ -62,10 +62,14 @@ class AthenaBatch(object):
                     yield [d.get('VarCharValue', 'NULL') for d in row['Data']]
 
             if self.format in ['CSV', 'CSV_HEADER']:
-                csv_writer = csv.writer(sys.stdout)
+                csv_writer = csv.writer(sys.stdout, quoting=csv.QUOTE_ALL)
                 if self.format == 'CSV_HEADER':
                     csv_writer.writerow(headers)
                 csv_writer.writerows([x for x in yield_rows()])
+            elif self.format == 'TSV':
+                print(tabulate([x for x in yield_rows()], tablefmt='tsv'))
+            elif self.format == 'TSV_HEADER':
+                print(tabulate([x for x in yield_rows()], headers=headers, tablefmt='tsv'))
             elif self.format == 'VERTICAL':
                 for x, row in enumerate(yield_rows()):
                     print('--[RECORD {}]--'.format(x+1))
@@ -314,22 +318,18 @@ def main():
         action='store_true'
     )
     parser.add_argument(
-        '--execute'
+        '--execute',
+        metavar='STATEMENT'
     )
     parser.add_argument(
         '--output-format',
         dest='format',
-        # default='CSV',
-        help='Output format for batch mode [ALIGNED, VERTICAL, CSV, TSV, CSV_HEADER, TSV_HEADER, NULL] (default: CSV)'
+        help='Output format for batch mode [VERTICAL, CSV, TSV, CSV_HEADER, TSV_HEADER, NULL]'
     )
     parser.add_argument(
         '--schema',
         '--database',
         '--db'
-    )
-    parser.add_argument(
-        '--version',
-        action='store_true'
     )
     parser.add_argument(
         '--profile'
@@ -341,6 +341,11 @@ def main():
         '--s3-bucket',
         '--bucket',
         dest='bucket'
+    )
+    parser.add_argument(
+        '--version',
+        action='store_true',
+        help='Display version info and quit'
     )
     args = parser.parse_args()
 
