@@ -24,21 +24,24 @@ Usage
 
 ```shell
 $ athena --help
-usage: athena [--debug] [--execute <execute>] [--output-format <output-format>] [--schema <schema>] [--version] [--region <region>] [--s3-bucket <bucket>]
+usage: athena [--debug] [--execute <statement>] [--output-format <format>] [--schema <schema>]
+                [--profile <profile>] [--region <region>] [--s3-bucket <bucket>] [--version]
 
 Athena interactive console
 
 optional arguments:
   -h, --help            show this help message and exit
-  --debug
-  --execute STATEMENT
+  --debug               enable debug mode
+  --execute STATEMENT   execute statement in batch mode
   --output-format FORMAT
                         output format for batch mode [ALIGNED, VERTICAL, CSV,
                         TSV, CSV_HEADER, TSV_HEADER, NULL]
   --schema SCHEMA, --database SCHEMA, --db SCHEMA
-  --profile PROFILE
-  --region REGION
+                        default schema
+  --profile PROFILE     AWS profile
+  --region REGION       AWS region
   --s3-bucket BUCKET, --bucket BUCKET
+                        AWS S3 bucket for query results
   --version             show version info and exit
 ```
 
