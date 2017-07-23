@@ -1,7 +1,7 @@
 
 from setuptools import setup, find_packages
 
-version = '0.0.4'
+version = '0.0.5'
 
 setup(
     name="athena-cli",
@@ -12,11 +12,13 @@ setup(
     author='Nick Satterly',
     author_email='nick.satterly@theguardian.com',
     packages=find_packages(),
-    py_modules=['athena_cli'],
+    py_modules=[
+        'athena_cli',
+        'tabulate_presto' # https://bitbucket.org/astanin/python-tabulate/pull-requests/35
+    ],
     install_requires=[
         'boto3',
-        'cmd2',
-        'tabulate'
+        'cmd2'
     ],
     include_package_data=True,
     zip_safe=True,
