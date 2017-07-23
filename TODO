@@ -1,6 +1,3 @@
 TODO
-1. quote csv values
-2. command line options eg. execute and output-format
-3. verify all command line options
-4. verify data and cost calcuation
-8. add tests and integrate with Travis-ci
+1. verify data and cost calcuation
+2. add tests and integrate with Travis-ci
