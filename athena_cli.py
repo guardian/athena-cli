@@ -74,7 +74,7 @@ class AthenaBatch(object):
                 for x, row in enumerate(yield_rows()):
                     print('--[RECORD {}]--'.format(x+1))
                     print(tabulate(zip(*[headers,row]), tablefmt='presto'))
-            else:
+            else:  # ALIGNED
                 print(tabulate([x for x in yield_rows()], headers=headers, tablefmt='presto'))
 
         if status == 'FAILED':
@@ -324,7 +324,7 @@ def main():
     parser.add_argument(
         '--output-format',
         dest='format',
-        help='Output format for batch mode [VERTICAL, CSV, TSV, CSV_HEADER, TSV_HEADER, NULL]'
+        help='Output format for batch mode [ALIGNED, VERTICAL, CSV, TSV, CSV_HEADER, TSV_HEADER, NULL]'
     )
     parser.add_argument(
         '--schema',
