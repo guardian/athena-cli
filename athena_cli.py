@@ -302,17 +302,19 @@ def main():
 
     parser = argparse.ArgumentParser(
         prog='athena',
-        usage='athena [--debug] [--execute <execute>] [--output-format <output-format>] [--schema <schema>] [--version]'
-              ' [--region <region>] [--s3-bucket <bucket>]',
+        usage='athena [--debug] [--execute <statement>] [--output-format <format>] [--schema <schema>]'
+              ' [--profile <profile>] [--region <region>] [--s3-bucket <bucket>] [--version]',
         description='Athena interactive console'
     )
     parser.add_argument(
         '--debug',
-        action='store_true'
+        action='store_true',
+        help='enable debug mode'
     )
     parser.add_argument(
         '--execute',
-        metavar='STATEMENT'
+        metavar='STATEMENT',
+        help='execute statement in batch mode'
     )
     parser.add_argument(
         '--output-format',
@@ -322,18 +324,22 @@ def main():
     parser.add_argument(
         '--schema',
         '--database',
-        '--db'
+        '--db',
+        help='default schema'
     )
     parser.add_argument(
-        '--profile'
+        '--profile',
+        help='AWS profile'
     )
     parser.add_argument(
-        '--region'
+        '--region',
+        help='AWS region'
     )
     parser.add_argument(
         '--s3-bucket',
         '--bucket',
-        dest='bucket'
+        dest='bucket',
+        help='AWS S3 bucket for query results'
     )
     parser.add_argument(
         '--version',
