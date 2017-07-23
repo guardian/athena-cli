@@ -1,25 +1,81 @@
 #!/usr/local/bin/python
 
-import os
-import sys
 import argparse
 import atexit
+import csv
+import json
+import os
 import readline
 import subprocess
-import uuid
+import sys
 import time
-import json
+import uuid
 
 import boto3
 import cmd2 as cmd
 
 from botocore.exceptions import ClientError, ParamValidationError
-from tabulate import tabulate
+from tabulate_presto import tabulate
 
 LESS = "less -FXRSn"
 HISTORY_FILE_SIZE = 500
 
-__version__ = '0.0.4'
+__version__ = '0.0.5'
+
+
+class AthenaBatch(object):
+
+    def __init__(self, profile, region, bucket, db=None, format='CSV', debug=False):
+
+        self.athena = Athena(profile, region, bucket, debug)
+
+        self.region = region
+        self.bucket = bucket
+        self.dbname = db
+        self.format = format
+        self.debug = debug
+
+        self.row_count = 0
+
+    def execute(self, statement):
+        self.athena.execution_id = self.athena.start_query_execution(self.dbname, statement)
+        if not self.athena.execution_id:
+            return
+
+        while True:
+            stats = self.athena.get_query_execution()
+            status = stats['QueryExecution']['Status']['State']
+            if status in ['SUCCEEDED', 'FAILED', 'CANCELLED']:
+                break
+            time.sleep(0.2)  # 200ms
+
+        if status == 'SUCCEEDED':
+            results = self.athena.get_query_results()
+            headers = [h['Name'] for h in results['ResultSet']['ResultSetMetadata']['ColumnInfo']]
+
+            def yield_rows():
+                for row in results['ResultSet']['Rows']:
+                    # https://forums.aws.amazon.com/thread.jspa?threadID=256505
+                    if row['Data'][0].get('VarCharValue', None) == headers[0]:
+                        self.row_count -= 1
+                        continue
+                    yield [d.get('VarCharValue', 'NULL') for d in row['Data']]
+
+            if self.format in ['CSV', 'CSV_HEADER']:
+                csv_writer = csv.writer(sys.stdout)
+                if self.format == 'CSV_HEADER':
+                    csv_writer.writerow(headers)
+                csv_writer.writerows([x for x in yield_rows()])
+            elif self.format == 'VERTICAL':
+                for x, row in enumerate(yield_rows()):
+                    print('--[RECORD {}]--'.format(x+1))
+                    print(tabulate(zip(*[headers,row]), tablefmt='presto'))
+            else:
+                print(tabulate([x for x in yield_rows()], headers=headers, tablefmt='presto'))
+
+        if status == 'FAILED':
+            print(stats['QueryExecution']['Status']['StateChangeReason'])
+
 
 del cmd.Cmd.do_show
 
@@ -29,22 +85,19 @@ class AthenaShell(cmd.Cmd):
     multilineCommands = ['WITH', 'SELECT', 'ALTER', 'CREATE', 'DESCRIBE', 'DROP', 'MSCK', 'SHOW', 'USE', 'VALUES']
     allow_cli_args = False
 
-    def __init__(self, profile, region, bucket, db=None, format=None, debug=False):
+    def __init__(self, profile, region, bucket, db=None, debug=False):
         cmd.Cmd.__init__(self)
+
+        self.athena = Athena(profile, region, bucket, debug)
 
         self.region = region
         self.bucket = bucket
         self.dbname = db
-        self.format = format or "simple"
         self.debug = debug
 
-        self.execution_id = None
         self.row_count = 0
 
-        session = boto3.Session(profile_name=profile)
-        self.athena = session.client('athena')
         self.set_prompt()
-
         self.pager = os.environ.get('ATHENA_CLI_PAGER', LESS).split(' ')
 
         self.hist_file = os.path.join(os.path.expanduser("~"), ".athena_history")
@@ -57,9 +110,9 @@ class AthenaShell(cmd.Cmd):
         try:
             self.cmdloop(intro)
         except KeyboardInterrupt:
-            if self.execution_id:
-                self._stop_query_execution()
-                print('\n\n%s' % self._console_link())
+            if self.athena.execution_id:
+                self.athena.stop_query_execution()
+                print('\n\n%s' % self.athena.console_link(self.region))
                 print('\nQuery aborted by user')
             else:
                 print('\r')
@@ -125,15 +178,15 @@ See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
         self.dbname = schema.rstrip(';')
         self.set_prompt()
 
-    def default(self, query):
-        self.execution_id = self._start_query_execution(query)
-        if not self.execution_id:
+    def default(self, statement):
+        self.athena.execution_id = self.athena.start_query_execution(self.dbname, statement)
+        if not self.athena.execution_id:
             return
 
         while True:
-            stats = self._get_query_execution()
+            stats = self.athena.get_query_execution()
             status = stats['QueryExecution']['Status']['State']
-            sys.stdout.write('\rQuery {0}, {1:9}'.format(self.execution_id, status))
+            sys.stdout.write('\rQuery {0}, {1:9}'.format(self.athena.execution_id, status))
             sys.stdout.flush()
             if status in ['SUCCEEDED', 'FAILED', 'CANCELLED']:
                 break
@@ -143,7 +196,7 @@ See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
         sys.stdout.flush()
 
         if status == 'SUCCEEDED':
-            results = self._get_query_results()
+            results = self.athena.get_query_results()
             headers = [h['Name'] for h in results['ResultSet']['ResultSetMetadata']['ColumnInfo']]
             row_count = len(results['ResultSet']['Rows'])
 
@@ -156,14 +209,14 @@ See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
                     yield [d.get('VarCharValue', 'NULL') for d in row['Data']]
 
             process = subprocess.Popen(self.pager, stdin=subprocess.PIPE)
-            process.stdin.write(tabulate([x for x in yield_rows()], headers=headers, tablefmt=self.format))
+            process.stdin.write(tabulate([x for x in yield_rows()], headers=headers, tablefmt='presto'))
             process.communicate()
             print('(%s rows)\n' % row_count)
 
-        print('Query {0}, {1}'.format(self.execution_id, status))
+        print('Query {0}, {1}'.format(self.athena.execution_id, status))
         if status == 'FAILED':
             print(stats['QueryExecution']['Status']['StateChangeReason'])
-        print(self._console_link())
+        print(self.athena.console_link(self.region))
 
         submission_date = stats['QueryExecution']['Status']['SubmissionDateTime']
         completion_date = stats['QueryExecution']['Status']['CompletionDateTime']
@@ -178,13 +231,25 @@ See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
             query_cost)
         )
 
-    def _start_query_execution(self, query):
+
+class Athena(object):
+
+    def __init__(self, profile, region, bucket, debug=False):
+
+        session = boto3.Session(profile_name=profile)
+        self.athena = session.client('athena')
+
+        self.bucket = bucket
+        self.execution_id = None
+        self.debug = debug
+
+    def start_query_execution(self, db, query):
         try:
             return self.athena.start_query_execution(
-                QueryString=query,
+                QueryString=query.encode('utf-8'),
                 ClientRequestToken=str(uuid.uuid4()),
                 QueryExecutionContext={
-                    'Database': self.dbname
+                    'Database': db
                 },
                 ResultConfiguration={
                     'OutputLocation': self.bucket
@@ -194,7 +259,7 @@ See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
             print(e)
             return
 
-    def _get_query_execution(self):
+    def get_query_execution(self):
         try:
             return self.athena.get_query_execution(
                 QueryExecutionId=self.execution_id
@@ -202,7 +267,7 @@ See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
         except ClientError as e:
             print(e)
 
-    def _get_query_results(self):
+    def get_query_results(self):
         try:
             results = self.athena.get_query_results(
                 QueryExecutionId=self.execution_id
@@ -215,7 +280,7 @@ See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
 
         return results
 
-    def _stop_query_execution(self):
+    def stop_query_execution(self):
         try:
             return self.athena.stop_query_execution(
                 QueryExecutionId=self.execution_id
@@ -223,8 +288,8 @@ See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
         except ClientError as e:
             sys.exit(e)
 
-    def _console_link(self):
-        return 'https://{0}.console.aws.amazon.com/athena/home?force&region={0}#query/history/{1}'.format(self.region, self.execution_id)
+    def console_link(self, region):
+        return 'https://{0}.console.aws.amazon.com/athena/home?force&region={0}#query/history/{1}'.format(region, self.execution_id)
 
 
 def human_readable(size, precision=2):
@@ -253,7 +318,9 @@ def main():
     )
     parser.add_argument(
         '--output-format',
-        dest='format'
+        dest='format',
+        # default='CSV',
+        help='Output format for batch mode [ALIGNED, VERTICAL, CSV, TSV, CSV_HEADER, TSV_HEADER, NULL] (default: CSV)'
     )
     parser.add_argument(
         '--schema',
@@ -291,8 +358,12 @@ def main():
     account_id=subprocess.check_output('aws sts get-caller-identity --output text --query \'Account\' --profile {}'.format(profile or 'default'), shell=True).rstrip()
     bucket = args.bucket or 's3://{}-query-results-{}-{}'.format(profile or 'aws-athena', account_id, region)
 
-    shell = AthenaShell(profile, region, bucket, args.schema, args.format, args.debug)
-    shell.cmdloop_with_cancel()
+    if args.execute:
+        batch = AthenaBatch(profile, region, bucket, db=args.schema, format=args.format, debug=args.debug)
+        batch.execute(statement=args.execute)
+    else:
+        shell = AthenaShell(profile, region, bucket, db=args.schema, debug=args.debug)
+        shell.cmdloop_with_cancel()
 
 if __name__ == '__main__':
     main()
