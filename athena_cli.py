@@ -16,6 +16,7 @@ import cmd2 as cmd
 from botocore.exceptions import ClientError, ParamValidationError
 from tabulate import tabulate
 
+LESS = "less -FXRSn"
 HISTORY_FILE_SIZE = 500
 
 __version__ = '0.0.4'
@@ -43,6 +44,8 @@ class AthenaShell(cmd.Cmd):
         session = boto3.Session(profile_name=profile)
         self.athena = session.client('athena')
         self.set_prompt()
+
+        self.pager = os.environ.get('ATHENA_CLI_PAGER', LESS).split(' ')
 
         self.hist_file = os.path.join(os.path.expanduser("~"), ".athena_history")
         self.init_history()
@@ -152,7 +155,9 @@ See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
                         continue
                     yield [d.get('VarCharValue', 'NULL') for d in row['Data']]
 
-            print(tabulate([x for x in yield_rows()], headers=headers, tablefmt=self.format))
+            process = subprocess.Popen(self.pager, stdin=subprocess.PIPE)
+            process.stdin.write(tabulate([x for x in yield_rows()], headers=headers, tablefmt=self.format))
+            process.communicate()
             print('(%s rows)\n' % row_count)
 
         print('Query {0}, {1}'.format(self.execution_id, status))
