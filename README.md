@@ -33,13 +33,13 @@ optional arguments:
   --debug
   --execute STATEMENT
   --output-format FORMAT
-                        Output format for batch mode [ALIGNED, VERTICAL, CSV,
+                        output format for batch mode [ALIGNED, VERTICAL, CSV,
                         TSV, CSV_HEADER, TSV_HEADER, NULL]
   --schema SCHEMA, --database SCHEMA, --db SCHEMA
   --profile PROFILE
   --region REGION
   --s3-bucket BUCKET, --bucket BUCKET
-  --version             Display version info and quit
+  --version             show version info and exit
 ```
 
 ```sql
