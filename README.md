@@ -108,8 +108,9 @@ Command history is written to `~/.athena_history`.
 References
 ----------
 
-  * PrestoDB: https://prestodb.io/docs/current/
   * AWS Athena: https://aws.amazon.com/athena/
+  * AWS SDK for Python: https://boto3.readthedocs.io/en/latest/reference/services/athena.html
+  * PrestoDB: https://prestodb.io/docs/current/
 
 License
 -------

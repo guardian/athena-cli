@@ -20,7 +20,7 @@ from tabulate_presto import tabulate
 LESS = "less -FXRSn"
 HISTORY_FILE_SIZE = 500
 
-__version__ = '0.0.6'
+__version__ = '0.0.7'
 
 
 class AthenaBatch(object):
@@ -34,8 +34,6 @@ class AthenaBatch(object):
         self.dbname = db
         self.format = format
         self.debug = debug
-
-        self.row_count = 0
 
     def execute(self, statement):
         self.athena.execution_id = self.athena.start_query_execution(self.dbname, statement)
@@ -53,29 +51,21 @@ class AthenaBatch(object):
             results = self.athena.get_query_results()
             headers = [h['Name'] for h in results['ResultSet']['ResultSetMetadata']['ColumnInfo']]
 
-            def yield_rows():
-                for row in results['ResultSet']['Rows']:
-                    # https://forums.aws.amazon.com/thread.jspa?threadID=256505
-                    if row['Data'][0].get('VarCharValue', None) == headers[0]:
-                        self.row_count -= 1
-                        continue
-                    yield [d.get('VarCharValue', 'NULL') for d in row['Data']]
-
             if self.format in ['CSV', 'CSV_HEADER']:
                 csv_writer = csv.writer(sys.stdout, quoting=csv.QUOTE_ALL)
                 if self.format == 'CSV_HEADER':
                     csv_writer.writerow(headers)
-                csv_writer.writerows([x for x in yield_rows()])
+                csv_writer.writerows([x for x in self.athena.yield_rows(results, headers)])
             elif self.format == 'TSV':
-                print(tabulate([x for x in yield_rows()], tablefmt='tsv'))
+                print(tabulate([x for x in self.athena.yield_rows(results, headers)], tablefmt='tsv'))
             elif self.format == 'TSV_HEADER':
-                print(tabulate([x for x in yield_rows()], headers=headers, tablefmt='tsv'))
+                print(tabulate([x for x in self.athena.yield_rows(results, headers)], headers=headers, tablefmt='tsv'))
             elif self.format == 'VERTICAL':
-                for x, row in enumerate(yield_rows()):
+                for x, row in enumerate(self.athena.yield_rows(results, headers)):
                     print('--[RECORD {}]--'.format(x+1))
                     print(tabulate(zip(*[headers,row]), tablefmt='presto'))
             else:  # ALIGNED
-                print(tabulate([x for x in yield_rows()], headers=headers, tablefmt='presto'))
+                print(tabulate([x for x in self.athena.yield_rows(results, headers)], headers=headers, tablefmt='presto'))
 
         if status == 'FAILED':
             print(stats['QueryExecution']['Status']['StateChangeReason'])
@@ -204,16 +194,11 @@ See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
             headers = [h['Name'] for h in results['ResultSet']['ResultSetMetadata']['ColumnInfo']]
             row_count = len(results['ResultSet']['Rows'])
 
-            def yield_rows():
-                for row in results['ResultSet']['Rows']:
-                    # https://forums.aws.amazon.com/thread.jspa?threadID=256505
-                    if row['Data'][0].get('VarCharValue', None) == headers[0]:
-                        self.row_count -= 1
-                        continue
-                    yield [d.get('VarCharValue', 'NULL') for d in row['Data']]
+            if results['ResultSet']['Rows'][0]['Data'][0].get('VarCharValue', None) == headers[0]:
+                row_count -= 1  # don't count header
 
             process = subprocess.Popen(self.pager, stdin=subprocess.PIPE)
-            process.stdin.write(tabulate([x for x in yield_rows()], headers=headers, tablefmt='presto'))
+            process.stdin.write(tabulate([x for x in self.athena.yield_rows(results, headers)], headers=headers, tablefmt='presto'))
             process.communicate()
             print('(%s rows)\n' % row_count)
 
@@ -292,6 +277,14 @@ class Athena(object):
         except ClientError as e:
             sys.exit(e)
 
+    @staticmethod
+    def yield_rows(results, headers):
+        for row in results['ResultSet']['Rows']:
+            # https://forums.aws.amazon.com/thread.jspa?threadID=256505
+            if row['Data'][0].get('VarCharValue', None) == headers[0]:
+                continue  # skip header
+            yield [d.get('VarCharValue', 'NULL') for d in row['Data']]
+
     def console_link(self, region):
         return 'https://{0}.console.aws.amazon.com/athena/home?force&region={0}#query/history/{1}'.format(region, self.execution_id)
 
@@ -324,7 +317,7 @@ def main():
     parser.add_argument(
         '--output-format',
         dest='format',
-        help='Output format for batch mode [ALIGNED, VERTICAL, CSV, TSV, CSV_HEADER, TSV_HEADER, NULL]'
+        help='output format for batch mode [ALIGNED, VERTICAL, CSV, TSV, CSV_HEADER, TSV_HEADER, NULL]'
     )
     parser.add_argument(
         '--schema',
@@ -345,7 +338,7 @@ def main():
     parser.add_argument(
         '--version',
         action='store_true',
-        help='Display version info and quit'
+        help='show version info and exit'
     )
     args = parser.parse_args()
 
