@@ -31,12 +31,15 @@ Athena interactive console
 optional arguments:
   -h, --help            show this help message and exit
   --debug
-  --execute EXECUTE
+  --execute STATEMENT
   --output-format FORMAT
+                        Output format for batch mode [ALIGNED, VERTICAL, CSV,
+                        TSV, CSV_HEADER, TSV_HEADER, NULL]
   --schema SCHEMA, --database SCHEMA, --db SCHEMA
-  --version
+  --profile PROFILE
   --region REGION
   --s3-bucket BUCKET, --bucket BUCKET
+  --version             Display version info and quit
 ```
 
 ```sql
