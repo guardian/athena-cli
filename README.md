@@ -1,6 +1,8 @@
 Athena CLI
 ==========
 
+[![Build Status](https://travis-ci.org/guardian/athena-cli.svg?branch=master)](https://travis-ci.org/guardian/athena-cli)
+
 Presto-like CLI tool for [AWS Athena](https://aws.amazon.com/athena/). The alternative is using the
 AWS CLI [Athena sub-commands](http://docs.aws.amazon.com/cli/latest/reference/athena/).
 
