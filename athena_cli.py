@@ -225,7 +225,7 @@ class Athena(object):
 
     def __init__(self, profile, region, bucket, debug=False):
 
-        session = boto3.Session(profile_name=profile)
+        session = boto3.Session(profile_name=profile, region_name=region)
         self.athena = session.client('athena')
 
         self.bucket = bucket
