@@ -359,7 +359,11 @@ def main():
     region = args.region or os.environ.get('AWS_DEFAULT_REGION', None) or \
         subprocess.check_output('aws configure get region --profile {}'.format(profile or 'default'), shell=True).rstrip()
 
-    account_id=subprocess.check_output('aws sts get-caller-identity --output text --query \'Account\' --profile {}'.format(profile or 'default'), shell=True).rstrip()
+    try:
+        account_id=subprocess.check_output('aws sts get-caller-identity --output text --query \'Account\' --profile {}'
+                                           .format(profile or 'default'), shell=True).rstrip()
+    except Exception as e:
+        sys.exit(str(e))
     bucket = args.bucket or 's3://{}-query-results-{}-{}'.format(profile or 'aws-athena', account_id, region)
 
     if args.execute:
