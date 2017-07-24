@@ -1,12 +1,13 @@
 Athena CLI
 ==========
 
-Presto-like CLI tool for AWS Athena.
+Presto-like CLI tool for [AWS Athena](https://aws.amazon.com/athena/). The alternative is using the
+AWS CLI [Athena sub-commands](http://docs.aws.amazon.com/cli/latest/reference/athena/).
 
 Installation
 ------------
 
-Using `pip` install then run:
+To install using `pip` run:
 
     $ pip install athena-cli
 
@@ -22,7 +23,7 @@ Only required configuration is AWS credentials.
 Usage
 -----
 
-```shell
+```
 $ athena --help
 usage: athena [--debug] [--execute <statement>] [--output-format <format>] [--schema <schema>]
                 [--profile <profile>] [--region <region>] [--s3-bucket <bucket>] [--version]
@@ -45,7 +46,7 @@ optional arguments:
   --version             show version info and exit
 ```
 
-```sql
+```
 athena> help
 
 Supported commands:
