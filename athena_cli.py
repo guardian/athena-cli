@@ -20,7 +20,7 @@ from tabulate_presto import tabulate
 LESS = "less -FXRSn"
 HISTORY_FILE_SIZE = 500
 
-__version__ = '0.0.9'
+__version__ = '0.0.10'
 
 
 class AthenaBatch(object):
@@ -235,7 +235,7 @@ class Athena(object):
     def start_query_execution(self, db, query):
         try:
             return self.athena.start_query_execution(
-                QueryString=query.encode('utf-8'),
+                QueryString=query,
                 ClientRequestToken=str(uuid.uuid4()),
                 QueryExecutionContext={
                     'Database': db
