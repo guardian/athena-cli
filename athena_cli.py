@@ -234,6 +234,9 @@ class Athena(object):
 
     def start_query_execution(self, db, query):
         try:
+            if not db:
+                raise ValueError('Schema must be specified when session schema is not set')
+
             return self.athena.start_query_execution(
                 QueryString=query,
                 ClientRequestToken=str(uuid.uuid4()),
@@ -244,7 +247,7 @@ class Athena(object):
                     'OutputLocation': self.bucket
                 }
             )['QueryExecutionId']
-        except (ClientError, ParamValidationError) as e:
+        except (ClientError, ParamValidationError, ValueError) as e:
             print(e)
             return
 
