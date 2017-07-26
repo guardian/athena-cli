@@ -358,15 +358,27 @@ def main():
         print('Athena CLI %s' % __version__)
         sys.exit()
 
+    # get profile
     profile = args.profile or os.environ.get('AWS_DEFAULT_PROFILE', None)
-    region = args.region or os.environ.get('AWS_DEFAULT_REGION', None) or \
-        subprocess.check_output('aws configure get region --profile {}'.format(profile or 'default'), shell=True).rstrip()
 
+    # get region
+    try:
+        region_from_profile = subprocess.check_output('aws configure get region --profile {}'.format(profile or 'default'), shell=True).rstrip()
+    except Exception:
+        region_from_profile = None
+    region = args.region or os.environ.get('AWS_DEFAULT_REGION', None) or region_from_profile
+
+    if not region:
+        sys.exit('You must specify a region.')
+
+    # get account id
     try:
         account_id=subprocess.check_output('aws sts get-caller-identity --output text --query \'Account\' --profile {}'
                                            .format(profile or 'default'), shell=True).rstrip()
     except Exception as e:
         sys.exit(str(e))
+
+    # get S3 bucket
     bucket = args.bucket or 's3://{}-query-results-{}-{}'.format(profile or 'aws-athena', account_id, region)
 
     if args.execute:
