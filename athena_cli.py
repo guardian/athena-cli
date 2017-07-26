@@ -162,7 +162,7 @@ See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
         print(help)
 
     def do_quit(self, args):
-        print
+        print()
         return -1
 
     def do_EOF(self, args):
@@ -198,7 +198,7 @@ See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
                 row_count -= 1  # don't count header
 
             process = subprocess.Popen(self.pager, stdin=subprocess.PIPE)
-            process.stdin.write(tabulate([x for x in self.athena.yield_rows(results, headers)], headers=headers, tablefmt='presto'))
+            process.stdin.write(tabulate([x for x in self.athena.yield_rows(results, headers)], headers=headers, tablefmt='presto').encode('utf-8'))
             process.communicate()
             print('(%s rows)\n' % row_count)
 
@@ -363,7 +363,8 @@ def main():
 
     # get region
     try:
-        region_from_profile = subprocess.check_output('aws configure get region --profile {}'.format(profile or 'default'), shell=True).rstrip()
+        region_from_profile = subprocess.check_output('aws configure get region --profile {}'
+                                                      .format(profile or 'default'), shell=True).decode('utf-8').rstrip()
     except Exception:
         region_from_profile = None
     region = args.region or os.environ.get('AWS_DEFAULT_REGION', None) or region_from_profile
@@ -374,7 +375,7 @@ def main():
     # get account id
     try:
         account_id=subprocess.check_output('aws sts get-caller-identity --output text --query \'Account\' --profile {}'
-                                           .format(profile or 'default'), shell=True).rstrip()
+                                           .format(profile or 'default'), shell=True).decode('utf-8').rstrip()
     except Exception as e:
         sys.exit(str(e))
 
