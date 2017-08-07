@@ -6,6 +6,8 @@ Athena CLI
 Presto-like CLI tool for [AWS Athena](https://aws.amazon.com/athena/). The alternative is using the
 AWS CLI [Athena sub-commands](http://docs.aws.amazon.com/cli/latest/reference/athena/).
 
+[![athena](https://asciinema.org/a/RgBXffPafqkuadBR6wL9S3b3y.png)](https://asciinema.org/a/RgBXffPafqkuadBR6wL9S3b3y?speed=2&theme=solarized-dark&autoplay=1)
+
 Installation
 ------------
 
