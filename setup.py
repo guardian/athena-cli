@@ -1,7 +1,7 @@
 
 from setuptools import setup, find_packages
 
-version = '0.0.13'
+version = '0.0.13a'
 
 setup(
     name="athena-cli",
