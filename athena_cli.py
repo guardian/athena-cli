@@ -180,13 +180,14 @@ See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
         while True:
             stats = self.athena.get_query_execution()
             status = stats['QueryExecution']['Status']['State']
-            sys.stdout.write('\rQuery {0}, {1:9}'.format(self.athena.execution_id, status))
+            status_line = 'Query {0}, {1:9}'.format(self.athena.execution_id, status)
+            sys.stdout.write('\r' + status_line)
             sys.stdout.flush()
             if status in ['SUCCEEDED', 'FAILED', 'CANCELLED']:
                 break
             time.sleep(0.2)  # 200ms
 
-        sys.stdout.write('\r')  # delete query status line
+        sys.stdout.write('\r' + ' ' * len(status_line) + '\r')  # delete query status line
         sys.stdout.flush()
 
         if status == 'SUCCEEDED':
