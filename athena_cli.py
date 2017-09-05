@@ -173,7 +173,7 @@ See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
         self.set_prompt()
 
     def default(self, statement):
-        self.athena.execution_id = self.athena.start_query_execution(self.dbname, statement)
+        self.athena.execution_id = self.athena.start_query_execution(self.dbname, statement.full_parsed_statement())
         if not self.athena.execution_id:
             return
 
