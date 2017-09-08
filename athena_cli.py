@@ -1,4 +1,4 @@
-#!/usr/local/bin/python
+#!/usr/local/bin/python2.7
 
 import argparse
 import atexit
@@ -195,7 +195,7 @@ See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
             headers = [h['Name'] for h in results['ResultSet']['ResultSetMetadata']['ColumnInfo']]
             row_count = len(results['ResultSet']['Rows'])
 
-            if results['ResultSet']['Rows'][0]['Data'][0].get('VarCharValue', None) == headers[0]:
+            if headers and results['ResultSet']['Rows'][0]['Data'][0].get('VarCharValue', None) == headers[0]:
                 row_count -= 1  # don't count header
 
             process = subprocess.Popen(self.pager, stdin=subprocess.PIPE)
@@ -285,7 +285,7 @@ class Athena(object):
     def yield_rows(results, headers):
         for row in results['ResultSet']['Rows']:
             # https://forums.aws.amazon.com/thread.jspa?threadID=256505
-            if row['Data'][0].get('VarCharValue', None) == headers[0]:
+            if headers and row['Data'][0].get('VarCharValue', None) == headers[0]:
                 continue  # skip header
             yield [d.get('VarCharValue', 'NULL') for d in row['Data']]
 
