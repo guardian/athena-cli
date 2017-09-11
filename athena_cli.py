@@ -55,15 +55,15 @@ class AthenaBatch(object):
                 csv_writer = csv.writer(sys.stdout, quoting=csv.QUOTE_ALL)
                 if self.format == 'CSV_HEADER':
                     csv_writer.writerow(headers)
-                csv_writer.writerows([x for x in self.athena.yield_rows(results, headers)])
+                csv_writer.writerows([row for row in self.athena.yield_rows(results, headers)])
             elif self.format == 'TSV':
-                print(tabulate([x for x in self.athena.yield_rows(results, headers)], tablefmt='tsv'))
+                print(tabulate([row for row in self.athena.yield_rows(results, headers)], tablefmt='tsv'))
             elif self.format == 'TSV_HEADER':
-                print(tabulate([x for x in self.athena.yield_rows(results, headers)], headers=headers, tablefmt='tsv'))
+                print(tabulate([row for row in self.athena.yield_rows(results, headers)], headers=headers, tablefmt='tsv'))
             elif self.format == 'VERTICAL':
-                for x, row in enumerate(self.athena.yield_rows(results, headers)):
-                    print('--[RECORD {}]--'.format(x+1))
-                    print(tabulate(zip(*[headers,row]), tablefmt='presto'))
+                for num, row in enumerate(self.athena.yield_rows(results, headers)):
+                    print('--[RECORD {}]--'.format(num+1))
+                    print(tabulate(zip(*[headers, row]), tablefmt='presto'))
             else:  # ALIGNED
                 print(tabulate([x for x in self.athena.yield_rows(results, headers)], headers=headers, tablefmt='presto'))
 
@@ -135,8 +135,8 @@ class AthenaShell(cmd.Cmd):
         except IOError:
             pass
 
-    def do_help(self, args):
-        help = """
+    def do_help(self, arg):
+        help_output = """
 Supported commands:
 QUIT
 SELECT
@@ -159,21 +159,21 @@ VALUES row [, ...]
 
 See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
 """
-        print(help)
+        print(help_output)
 
-    def do_quit(self, args):
+    def do_quit(self, arg):
         print()
         return -1
 
-    def do_EOF(self, args):
-        return self.do_quit(args)
+    def do_EOF(self, arg):
+        return self.do_quit(arg)
 
     def do_use(self, schema):
         self.dbname = schema.rstrip(';')
         self.set_prompt()
 
-    def default(self, statement):
-        self.athena.execution_id = self.athena.start_query_execution(self.dbname, statement.full_parsed_statement())
+    def default(self, line):
+        self.athena.execution_id = self.athena.start_query_execution(self.dbname, line.full_parsed_statement())
         if not self.athena.execution_id:
             return
 
@@ -218,8 +218,8 @@ See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
             str(completion_date - submission_date).split('.')[0],
             execution_time,
             human_readable(data_scanned),
-            query_cost)
-        )
+            query_cost
+        ))
 
 
 class Athena(object):
@@ -301,12 +301,12 @@ class Athena(object):
 
 
 def human_readable(size, precision=2):
-    suffixes=['B','KB','MB','GB','TB']
+    suffixes = ['B', 'KB', 'MB', 'GB', 'TB']
     suffixIndex = 0
     while size > 1024 and suffixIndex < 4:
         suffixIndex += 1 #increment the index of the suffix
         size = size/1024.0 #apply the division
-    return "%.*f%s"%(precision,size,suffixes[suffixIndex])
+    return "%.*f%s"%(precision, size, suffixes[suffixIndex])
 
 
 def main():
@@ -389,8 +389,8 @@ def main():
 
     # get account id
     try:
-        account_id=subprocess.check_output('aws sts get-caller-identity --output text --query \'Account\' --profile {}'
-                                           .format(profile or 'default'), shell=True).decode('utf-8').rstrip()
+        account_id = subprocess.check_output('aws sts get-caller-identity --output text --query \'Account\' --profile {}'
+                                             .format(profile or 'default'), shell=True).decode('utf-8').rstrip()
     except Exception as e:
         sys.exit(str(e))
 
