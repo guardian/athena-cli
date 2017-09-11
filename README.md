@@ -30,7 +30,8 @@ Usage
 ```
 $ athena --help
 usage: athena [--debug] [--execute <statement>] [--output-format <format>] [--schema <schema>]
-                [--profile <profile>] [--region <region>] [--s3-bucket <bucket>] [--version]
+              [--profile <profile>] [--region <region>] [--s3-bucket <bucket>]
+              [--server-side-encryption] [--version]
 
 Athena interactive console
 
@@ -47,6 +48,8 @@ optional arguments:
   --region REGION       AWS region
   --s3-bucket BUCKET, --bucket BUCKET
                         AWS S3 bucket for query results
+  --server-side-encryption, --encryption
+                        Use server-side-encryption for query results
   --version             show version info and exit
 ```
 
