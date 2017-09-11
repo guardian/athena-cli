@@ -25,9 +25,9 @@ __version__ = '0.0.14'
 
 class AthenaBatch(object):
 
-    def __init__(self, profile, region, bucket, db=None, format='CSV', debug=False):
+    def __init__(self, profile, region, bucket, db=None, format='CSV', debug=False, encryption=False):
 
-        self.athena = Athena(profile, region, bucket, debug)
+        self.athena = Athena(profile, region, bucket, debug, encryption)
 
         self.region = region
         self.bucket = bucket
@@ -79,10 +79,10 @@ class AthenaShell(cmd.Cmd):
     multilineCommands = ['WITH', 'SELECT', 'ALTER', 'CREATE', 'DESCRIBE', 'DROP', 'MSCK', 'SHOW', 'USE', 'VALUES']
     allow_cli_args = False
 
-    def __init__(self, profile, region, bucket, db=None, debug=False):
+    def __init__(self, profile, region, bucket, db=None, debug=False, encryption=False):
         cmd.Cmd.__init__(self)
 
-        self.athena = Athena(profile, region, bucket, debug)
+        self.athena = Athena(profile, region, bucket, debug, encryption)
 
         self.region = region
         self.bucket = bucket
@@ -224,7 +224,7 @@ See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
 
 class Athena(object):
 
-    def __init__(self, profile, region, bucket, debug=False):
+    def __init__(self, profile, region, bucket, debug=False, encryption=False):
 
         session = boto3.Session(profile_name=profile, region_name=region)
         self.athena = session.client('athena')
@@ -232,11 +232,20 @@ class Athena(object):
         self.bucket = bucket
         self.execution_id = None
         self.debug = debug
+        self.encryption = encryption
 
     def start_query_execution(self, db, query):
         try:
             if not db:
                 raise ValueError('Schema must be specified when session schema is not set')
+
+            result_configuration = {
+                'OutputLocation': self.bucket,
+            }
+            if self.encryption:
+                result_configuration['EncryptionConfiguration'] = {
+                    'EncryptionOption': 'SSE_S3'
+                }
 
             return self.athena.start_query_execution(
                 QueryString=query,
@@ -244,9 +253,7 @@ class Athena(object):
                 QueryExecutionContext={
                     'Database': db
                 },
-                ResultConfiguration={
-                    'OutputLocation': self.bucket
-                }
+                ResultConfiguration=result_configuration
             )['QueryExecutionId']
         except (ClientError, ParamValidationError, ValueError) as e:
             print(e)
@@ -307,7 +314,7 @@ def main():
     parser = argparse.ArgumentParser(
         prog='athena',
         usage='athena [--debug] [--execute <statement>] [--output-format <format>] [--schema <schema>]'
-              ' [--profile <profile>] [--region <region>] [--s3-bucket <bucket>] [--version]',
+              ' [--profile <profile>] [--region <region>] [--s3-bucket <bucket>] [--server-side-encryption] [--version]',
         description='Athena interactive console'
     )
     parser.add_argument(
@@ -344,6 +351,13 @@ def main():
         '--bucket',
         dest='bucket',
         help='AWS S3 bucket for query results'
+    )
+    parser.add_argument(
+        '--server-side-encryption',
+        '--encryption',
+        dest='encryption',
+        action='store_true',
+        help='Use server-side-encryption for query results'
     )
     parser.add_argument(
         '--version',
@@ -384,10 +398,10 @@ def main():
     bucket = args.bucket or 's3://{}-query-results-{}-{}'.format(profile or 'aws-athena', account_id, region)
 
     if args.execute:
-        batch = AthenaBatch(profile, region, bucket, db=args.schema, format=args.format, debug=args.debug)
+        batch = AthenaBatch(profile, region, bucket, db=args.schema, format=args.format, debug=args.debug, encryption=args.encryption)
         batch.execute(statement=args.execute)
     else:
-        shell = AthenaShell(profile, region, bucket, db=args.schema, debug=args.debug)
+        shell = AthenaShell(profile, region, bucket, db=args.schema, debug=args.debug, encryption=args.encryption)
         shell.cmdloop_with_cancel()
 
 if __name__ == '__main__':
