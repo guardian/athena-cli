@@ -374,7 +374,7 @@ def main():
         sys.exit()
 
     # get profile
-    profile = args.profile or os.environ.get('AWS_DEFAULT_PROFILE', None)
+    profile = args.profile or os.environ.get('AWS_DEFAULT_PROFILE', None) or os.environ.get('AWS_PROFILE', None)
 
     # get region
     try:
