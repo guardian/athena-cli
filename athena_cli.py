@@ -20,7 +20,7 @@ from tabulate_presto import tabulate
 LESS = "less -FXRSn"
 HISTORY_FILE_SIZE = 500
 
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 
 
 class AthenaBatch(object):
@@ -195,7 +195,7 @@ See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
             headers = [h['Name'] for h in results['ResultSet']['ResultSetMetadata']['ColumnInfo']]
             row_count = len(results['ResultSet']['Rows'])
 
-            if headers and results['ResultSet']['Rows'][0]['Data'][0].get('VarCharValue', None) == headers[0]:
+            if headers and len(results['ResultSet']['Rows']) and results['ResultSet']['Rows'][0]['Data'][0].get('VarCharValue', None) == headers[0]:
                 row_count -= 1  # don't count header
 
             process = subprocess.Popen(self.pager, stdin=subprocess.PIPE)
