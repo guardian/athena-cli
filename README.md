@@ -8,6 +8,11 @@ AWS CLI [Athena sub-commands](http://docs.aws.amazon.com/cli/latest/reference/at
 
 [![asciicast](https://asciinema.org/a/132545.png)](https://asciinema.org/a/132545)
 
+Requirements
+------------
+
+A recent version of the `aws` CLI must be available on the PATH.
+
 Installation
 ------------
 
@@ -112,6 +117,13 @@ Turn on debug at the `athena>` prompt by typing:
 athena> set debug true
 debug - was: False
 now: True
+```
+
+The below error means the vesion of `aws` CLI is not recent enough. Upgrade
+to version 1.10.18 or higher:
+
+```
+Command 'aws sts get-caller-identity --output text --query 'Account' --profile default' returned non-zero exit status 2
 ```
 
 Command history is written to `~/.athena_history`.
