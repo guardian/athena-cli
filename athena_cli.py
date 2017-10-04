@@ -48,13 +48,13 @@ class AthenaBatch(object):
 
         if status == 'SUCCEEDED':
             results = self.athena.get_query_results()
-            headers = [h['Name'] for h in results['ResultSet']['ResultSetMetadata']['ColumnInfo']]
+            headers = [h['Name'].encode("utf-8") for h in results['ResultSet']['ResultSetMetadata']['ColumnInfo']]
 
             if self.format in ['CSV', 'CSV_HEADER']:
                 csv_writer = csv.writer(sys.stdout, quoting=csv.QUOTE_ALL)
                 if self.format == 'CSV_HEADER':
                     csv_writer.writerow(headers)
-                csv_writer.writerows([row for row in self.athena.yield_rows(results, headers)])
+                csv_writer.writerows([[text.encode("utf-8") for text in row] for row in self.athena.yield_rows(results, headers)])
             elif self.format == 'TSV':
                 print(tabulate([row for row in self.athena.yield_rows(results, headers)], tablefmt='tsv'))
             elif self.format == 'TSV_HEADER':
