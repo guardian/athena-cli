@@ -13,12 +13,12 @@ setup(
     author_email='nick.satterly@theguardian.com',
     packages=find_packages(),
     py_modules=[
-        'athena_cli',
-        'tabulate_presto' # https://bitbucket.org/astanin/python-tabulate/pull-requests/35
+        'athena_cli'
     ],
     install_requires=[
         'boto3',
-        'cmd2'
+        'cmd2',
+        'tabulate>=0.8.1'
     ],
     include_package_data=True,
     zip_safe=True,

@@ -13,14 +13,13 @@ import uuid
 
 import boto3
 import cmd2 as cmd
-
 from botocore.exceptions import ClientError, ParamValidationError
-from tabulate_presto import tabulate
+from tabulate import tabulate
 
 LESS = "less -FXRSn"
 HISTORY_FILE_SIZE = 500
 
-__version__ = '0.1.1'
+__version__ = '0.1.2'
 
 
 class AthenaBatch(object):
