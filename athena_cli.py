@@ -19,7 +19,7 @@ from tabulate import tabulate
 LESS = "less -FXRSn"
 HISTORY_FILE_SIZE = 500
 
-__version__ = '0.1.3'
+__version__ = '0.1.4'
 
 
 class AthenaBatch(object):
