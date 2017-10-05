@@ -119,7 +119,7 @@ debug - was: False
 now: True
 ```
 
-The below error means the vesion of `aws` CLI is not recent enough. Upgrade
+The below error means the version of `aws` CLI is not recent enough. Upgrade
 to version 1.10.18 or higher:
 
 ```
