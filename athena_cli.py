@@ -26,26 +26,25 @@ __version__ = '0.1.4'
 class AthenaBatch(object):
 
     def __init__(self, athena, db=None, format='CSV'):
-
         self.athena = athena
         self.dbname = db
         self.format = format
         self.debug = athena.debug
 
     def execute(self, statement):
-        self.athena.execution_id = self.athena.start_query_execution(self.dbname, statement)
-        if not self.athena.execution_id:
+        execution_id = self.athena.start_query_execution(self.dbname, statement)
+        if not execution_id:
             return
 
         while True:
-            stats = self.athena.get_query_execution()
+            stats = self.athena.get_query_execution(execution_id)
             status = stats['QueryExecution']['Status']['State']
             if status in ['SUCCEEDED', 'FAILED', 'CANCELLED']:
                 break
             time.sleep(0.2)  # 200ms
 
         if status == 'SUCCEEDED':
-            results = self.athena.get_query_results()
+            results = self.athena.get_query_results(execution_id)
             headers = [h['Name'].encode("utf-8") for h in results['ResultSet']['ResultSetMetadata']['ColumnInfo']]
 
             if self.format in ['CSV', 'CSV_HEADER']:
@@ -83,6 +82,8 @@ class AthenaShell(cmd.Cmd):
         self.dbname = db
         self.debug = athena.debug
 
+        self.execution_id = None
+
         self.row_count = 0
 
         self.set_prompt()
@@ -98,9 +99,9 @@ class AthenaShell(cmd.Cmd):
         try:
             self.cmdloop(intro)
         except KeyboardInterrupt:
-            if self.athena.execution_id:
-                self.athena.stop_query_execution()
-                print('\n\n%s' % self.athena.console_link())
+            if self.execution_id:
+                self.athena.stop_query_execution(self.execution_id)
+                print('\n\n%s' % self.athena.console_link(self.execution_id))
                 print('\nQuery aborted by user')
             else:
                 print('\r')
@@ -167,14 +168,14 @@ See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
         self.set_prompt()
 
     def default(self, line):
-        self.athena.execution_id = self.athena.start_query_execution(self.dbname, line.full_parsed_statement())
-        if not self.athena.execution_id:
+        self.execution_id = self.athena.start_query_execution(self.dbname, line.full_parsed_statement())
+        if not self.execution_id:
             return
 
         while True:
-            stats = self.athena.get_query_execution()
+            stats = self.athena.get_query_execution(self.execution_id)
             status = stats['QueryExecution']['Status']['State']
-            status_line = 'Query {0}, {1:9}'.format(self.athena.execution_id, status)
+            status_line = 'Query {0}, {1:9}'.format(self.execution_id, status)
             sys.stdout.write('\r' + status_line)
             sys.stdout.flush()
             if status in ['SUCCEEDED', 'FAILED', 'CANCELLED']:
@@ -185,7 +186,7 @@ See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
         sys.stdout.flush()
 
         if status == 'SUCCEEDED':
-            results = self.athena.get_query_results()
+            results = self.athena.get_query_results(self.execution_id)
             headers = [h['Name'] for h in results['ResultSet']['ResultSetMetadata']['ColumnInfo']]
             row_count = len(results['ResultSet']['Rows'])
 
@@ -197,10 +198,10 @@ See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
             process.communicate()
             print('(%s rows)\n' % row_count)
 
-        print('Query {0}, {1}'.format(self.athena.execution_id, status))
+        print('Query {0}, {1}'.format(self.execution_id, status))
         if status == 'FAILED':
             print(stats['QueryExecution']['Status']['StateChangeReason'])
-        print(self.athena.console_link())
+        print(self.athena.console_link(self.execution_id))
 
         submission_date = stats['QueryExecution']['Status']['SubmissionDateTime']
         completion_date = stats['QueryExecution']['Status']['CompletionDateTime']
@@ -226,7 +227,6 @@ class Athena(object):
         self.region = region or os.environ.get('AWS_DEFAULT_REGION', None) or self.session.region_name
 
         self.bucket = bucket or self.default_bucket
-        self.execution_id = None
         self.debug = debug
         self.encryption = encryption
 
@@ -260,18 +260,18 @@ class Athena(object):
             print(e)
             return
 
-    def get_query_execution(self):
+    def get_query_execution(self, execution_id):
         try:
             return self.athena.get_query_execution(
-                QueryExecutionId=self.execution_id
+                QueryExecutionId=execution_id
             )
         except ClientError as e:
             print(e)
 
-    def get_query_results(self):
+    def get_query_results(self, execution_id):
         try:
             results = self.athena.get_query_results(
-                QueryExecutionId=self.execution_id
+                QueryExecutionId=execution_id
             )
         except ClientError as e:
             sys.exit(e)
@@ -281,10 +281,10 @@ class Athena(object):
 
         return results
 
-    def stop_query_execution(self):
+    def stop_query_execution(self, execution_id):
         try:
             return self.athena.stop_query_execution(
-                QueryExecutionId=self.execution_id
+                QueryExecutionId=execution_id
             )
         except ClientError as e:
             sys.exit(e)
@@ -297,8 +297,8 @@ class Athena(object):
                 continue  # skip header
             yield [d.get('VarCharValue', 'NULL') for d in row['Data']]
 
-    def console_link(self):
-        return 'https://{0}.console.aws.amazon.com/athena/home?force&region={0}#query/history/{1}'.format(self.region, self.execution_id)
+    def console_link(self, execution_id):
+        return 'https://{0}.console.aws.amazon.com/athena/home?force&region={0}#query/history/{1}'.format(self.region, execution_id)
 
 
 def human_readable(size, precision=2):
