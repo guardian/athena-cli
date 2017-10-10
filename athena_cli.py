@@ -12,6 +12,7 @@ import time
 import uuid
 
 import boto3
+import botocore
 import cmd2 as cmd
 from botocore.exceptions import ClientError, ParamValidationError
 from tabulate import tabulate
@@ -24,15 +25,12 @@ __version__ = '0.1.4'
 
 class AthenaBatch(object):
 
-    def __init__(self, profile, region, bucket, db=None, format='CSV', debug=False, encryption=False):
+    def __init__(self, athena, db=None, format='CSV'):
 
-        self.athena = Athena(profile, region, bucket, debug, encryption)
-
-        self.region = region
-        self.bucket = bucket
+        self.athena = athena
         self.dbname = db
         self.format = format
-        self.debug = debug
+        self.debug = athena.debug
 
     def execute(self, statement):
         self.athena.execution_id = self.athena.start_query_execution(self.dbname, statement)
@@ -78,15 +76,12 @@ class AthenaShell(cmd.Cmd):
     multilineCommands = ['WITH', 'SELECT', 'ALTER', 'CREATE', 'DESCRIBE', 'DROP', 'MSCK', 'SHOW', 'USE', 'VALUES']
     allow_cli_args = False
 
-    def __init__(self, profile, region, bucket, db=None, debug=False, encryption=False):
+    def __init__(self, athena, db=None):
         cmd.Cmd.__init__(self)
 
-        self.athena = Athena(profile, region, bucket, debug, encryption)
-
-        self.region = region
-        self.bucket = bucket
+        self.athena = athena
         self.dbname = db
-        self.debug = debug
+        self.debug = athena.debug
 
         self.row_count = 0
 
@@ -105,7 +100,7 @@ class AthenaShell(cmd.Cmd):
         except KeyboardInterrupt:
             if self.athena.execution_id:
                 self.athena.stop_query_execution()
-                print('\n\n%s' % self.athena.console_link(self.region))
+                print('\n\n%s' % self.athena.console_link())
                 print('\nQuery aborted by user')
             else:
                 print('\r')
@@ -205,7 +200,7 @@ See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
         print('Query {0}, {1}'.format(self.athena.execution_id, status))
         if status == 'FAILED':
             print(stats['QueryExecution']['Status']['StateChangeReason'])
-        print(self.athena.console_link(self.region))
+        print(self.athena.console_link())
 
         submission_date = stats['QueryExecution']['Status']['SubmissionDateTime']
         completion_date = stats['QueryExecution']['Status']['CompletionDateTime']
@@ -223,15 +218,22 @@ See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
 
 class Athena(object):
 
-    def __init__(self, profile, region, bucket, debug=False, encryption=False):
+    def __init__(self, profile, region=None, bucket=None, debug=False, encryption=False):
 
-        session = boto3.Session(profile_name=profile, region_name=region)
-        self.athena = session.client('athena')
+        self.session = boto3.Session(profile_name=profile, region_name=region)
+        self.athena = self.session.client('athena')
 
-        self.bucket = bucket
+        self.region = region or os.environ.get('AWS_DEFAULT_REGION', None) or self.session.region_name
+
+        self.bucket = bucket or self.default_bucket
         self.execution_id = None
         self.debug = debug
         self.encryption = encryption
+
+    @property
+    def default_bucket(self):
+        account_id = self.session.client('sts').get_caller_identity().get('Account')
+        return 's3://{}-query-results-{}-{}'.format(self.session.profile_name or 'aws-athena', account_id, self.region)
 
     def start_query_execution(self, db, query):
         try:
@@ -295,8 +297,8 @@ class Athena(object):
                 continue  # skip header
             yield [d.get('VarCharValue', 'NULL') for d in row['Data']]
 
-    def console_link(self, region):
-        return 'https://{0}.console.aws.amazon.com/athena/home?force&region={0}#query/history/{1}'.format(region, self.execution_id)
+    def console_link(self):
+        return 'https://{0}.console.aws.amazon.com/athena/home?force&region={0}#query/history/{1}'.format(self.region, self.execution_id)
 
 
 def human_readable(size, precision=2):
@@ -372,35 +374,18 @@ def main():
         print('Athena CLI %s' % __version__)
         sys.exit()
 
-    # get profile
     profile = args.profile or os.environ.get('AWS_DEFAULT_PROFILE', None) or os.environ.get('AWS_PROFILE', None)
 
-    # get region
     try:
-        region_from_profile = subprocess.check_output('aws configure get region --profile {}'
-                                                      .format(profile or 'default'), shell=True).decode('utf-8').rstrip()
-    except Exception:
-        region_from_profile = None
-    region = args.region or os.environ.get('AWS_DEFAULT_REGION', None) or region_from_profile
-
-    if not region:
-        sys.exit('You must specify a region.')
-
-    # get account id
-    try:
-        account_id = subprocess.check_output('aws sts get-caller-identity --output text --query \'Account\' --profile {}'
-                                             .format(profile or 'default'), shell=True).decode('utf-8').rstrip()
-    except Exception as e:
-        sys.exit(str(e))
-
-    # get S3 bucket
-    bucket = args.bucket or 's3://{}-query-results-{}-{}'.format(profile or 'aws-athena', account_id, region)
+        athena = Athena(profile, region=args.region, bucket=args.bucket, debug=args.debug, encryption=args.encryption)
+    except botocore.exceptions.ClientError as e:
+        sys.exit(e)
 
     if args.execute:
-        batch = AthenaBatch(profile, region, bucket, db=args.schema, format=args.format, debug=args.debug, encryption=args.encryption)
+        batch = AthenaBatch(athena, db=args.schema, format=args.format)
         batch.execute(statement=args.execute)
     else:
-        shell = AthenaShell(profile, region, bucket, db=args.schema, debug=args.debug, encryption=args.encryption)
+        shell = AthenaShell(athena, db=args.schema)
         shell.cmdloop_with_cancel()
 
 if __name__ == '__main__':
