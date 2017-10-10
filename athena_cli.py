@@ -29,7 +29,6 @@ class AthenaBatch(object):
         self.athena = athena
         self.dbname = db
         self.format = format
-        self.debug = athena.debug
 
     def execute(self, statement):
         execution_id = self.athena.start_query_execution(self.dbname, statement)
@@ -67,7 +66,7 @@ class AthenaBatch(object):
             print(stats['QueryExecution']['Status']['StateChangeReason'])
 
 
-del cmd.Cmd.do_show
+del cmd.Cmd.do_show  # "show" is an Athena command
 
 
 class AthenaShell(cmd.Cmd):
@@ -80,7 +79,6 @@ class AthenaShell(cmd.Cmd):
 
         self.athena = athena
         self.dbname = db
-        self.debug = athena.debug
 
         self.execution_id = None
 
@@ -166,6 +164,17 @@ See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
     def do_use(self, schema):
         self.dbname = schema.rstrip(';')
         self.set_prompt()
+
+    def do_set(self, arg):
+        try:
+            statement, param_name, val = arg.parsed.raw.split(None, 2)
+            val = val.strip()
+            param_name = param_name.strip().lower()
+            if param_name == 'debug':
+                self.athena.debug = cmd.cast(True, val)
+        except (ValueError, AttributeError):
+            self.do_show(arg)
+        super(AthenaShell, self).do_set(arg)
 
     def default(self, line):
         self.execution_id = self.athena.start_query_execution(self.dbname, line.full_parsed_statement())
