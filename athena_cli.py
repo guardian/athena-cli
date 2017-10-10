@@ -69,7 +69,7 @@ class AthenaBatch(object):
 del cmd.Cmd.do_show  # "show" is an Athena command
 
 
-class AthenaShell(cmd.Cmd):
+class AthenaShell(cmd.Cmd, object):
 
     multilineCommands = ['WITH', 'SELECT', 'ALTER', 'CREATE', 'DESCRIBE', 'DROP', 'MSCK', 'SHOW', 'USE', 'VALUES']
     allow_cli_args = False
