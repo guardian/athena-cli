@@ -83,18 +83,16 @@ VALUES row [, ...]
 
 See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
 
-athena> use clean;
-athena:clean> show tables;
-tab_name86a314-ecda-45e9-aec1-b0a3c4d7f1e2, SUCCEEDED
--------------
-elb_logs_raw_native
-elb_logs_raw_native_part
-(2 rows)
+athena> use sampledb;
+athena:sampledb> show tables;
+ tab_name
+------------
+ elb_logs
+(1 rows)
 
-Query b586a314-ecda-45e9-aec1-b0a3c4d7f1e2, SUCCEEDED
-https://eu-west-1.console.aws.amazon.com/athena/home?force&region=eu-west-1#query/history/b586a314-ecda-45e9-aec1-b0a3c4d7f1e2
-Time: 0:00:01, CPU Time: 1150ms total, Data Scanned: 0.00B, Cost: $0.00
-
+Query deb156b5-293e-472d-8897-5ee195b06b11, SUCCEEDED
+https://eu-west-1.console.aws.amazon.com/athena/home?force&region=eu-west-1#query/history/deb156b5-293e-472d-8897-5ee195b06b11
+Time: 0:00:00, CPU Time: 474ms total, Data Scanned: 0.00B, Cost: $0.00
 ```
 
 Troubleshooting
