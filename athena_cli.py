@@ -279,9 +279,17 @@ class Athena(object):
 
     def get_query_results(self, execution_id):
         try:
-            results = self.athena.get_query_results(
+            results = None
+            paginator = self.athena.get_paginator('get_query_results')
+            page_iterator = paginator.paginate(
                 QueryExecutionId=execution_id
             )
+
+            for page in page_iterator:
+                if results is None:
+                    results = page
+                else:
+                    results['ResultSet']['Rows'].extend(page['ResultSet']['Rows'])
         except ClientError as e:
             sys.exit(e)
 
