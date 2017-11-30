@@ -80,9 +80,14 @@ SHOW TABLES [IN <schema>] [<pattern>]
 SHOW TBLPROPERTIES <table>
 USE [<catalog>.]<schema>
 VALUES row [, ...]
+```
 
 See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
 
+Example
+-------
+
+```
 athena> use sampledb;
 athena:sampledb> show tables;
  tab_name
