@@ -65,8 +65,11 @@ class AthenaBatch(object):
         if status == 'FAILED':
             print(stats['QueryExecution']['Status']['StateChangeReason'])
 
-
-del cmd.Cmd.do_show  # "show" is an Athena command
+try:
+    del cmd.Cmd.do_show  # "show" is an Athena command
+except AttributeError:
+    # "show" was removed from Cmd2 0.8.0
+    pass
 
 
 class AthenaShell(cmd.Cmd, object):
