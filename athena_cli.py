@@ -1,4 +1,3 @@
-#!/usr/local/bin/python2.7
 
 import argparse
 import atexit
