@@ -16,10 +16,45 @@ import cmd2 as cmd
 from botocore.exceptions import ClientError, ParamValidationError
 from tabulate import tabulate
 
-LESS = "less -FXRSn"
+LESS = "less -FXRn"
+LESS_TRUNC = "less -FXRSn"
 HISTORY_FILE_SIZE = 500
 
-__version__ = '0.1.8'
+__version__ = '0.1.8-bt'
+
+def output_results(athena, format, execution_id, output):
+    results = athena.get_query_results(execution_id)
+    headers = [h['Name'].encode("utf-8") for h in results['ResultSet']['ResultSetMetadata']['ColumnInfo']]
+
+    row_count = len(results['ResultSet']['Rows'])
+    if headers and len(results['ResultSet']['Rows']) and results['ResultSet']['Rows'][0]['Data'][0].get('VarCharValue', None) == headers[0]:
+        row_count -= 1  # don't count header
+
+    try:
+        if format in ['CSV', 'CSV_HEADER']:
+            csv_writer = csv.writer(output, quoting=csv.QUOTE_ALL)
+            if format == 'CSV_HEADER':
+                csv_writer.writerow(headers)
+            csv_writer.writerows([[text.encode("utf-8") for text in row] for row in athena.yield_rows(results, headers)])
+        elif format == 'TSV':
+            output.write(tabulate([row for row in athena.yield_rows(results, headers)], tablefmt='tsv'))
+            output.write('\n')
+        elif format == 'TSV_HEADER':
+            output.write(tabulate([row for row in athena.yield_rows(results, headers)], headers=headers, tablefmt='tsv'))
+            output.write('\n')
+        elif format == 'VERTICAL':
+            for num, row in enumerate(athena.yield_rows(results, headers)):
+                output.write('--[RECORD {}]--'.format(num+1))
+                output.write('\n')
+                output.write(tabulate(zip(*[headers, row]), tablefmt='presto'))
+                output.write('\n')
+        else:  # ALIGNED
+            output.write(tabulate([x for x in athena.yield_rows(results, headers)], headers=headers, tablefmt='presto'))
+            output.write('\n')
+    except:
+        pass
+
+    return row_count
 
 
 class AthenaBatch(object):
@@ -42,24 +77,7 @@ class AthenaBatch(object):
             time.sleep(0.2)  # 200ms
 
         if status == 'SUCCEEDED':
-            results = self.athena.get_query_results(execution_id)
-            headers = [h['Name'].encode("utf-8") for h in results['ResultSet']['ResultSetMetadata']['ColumnInfo']]
-
-            if self.format in ['CSV', 'CSV_HEADER']:
-                csv_writer = csv.writer(sys.stdout, quoting=csv.QUOTE_ALL)
-                if self.format == 'CSV_HEADER':
-                    csv_writer.writerow(headers)
-                csv_writer.writerows([[text.encode("utf-8") for text in row] for row in self.athena.yield_rows(results, headers)])
-            elif self.format == 'TSV':
-                print(tabulate([row for row in self.athena.yield_rows(results, headers)], tablefmt='tsv'))
-            elif self.format == 'TSV_HEADER':
-                print(tabulate([row for row in self.athena.yield_rows(results, headers)], headers=headers, tablefmt='tsv'))
-            elif self.format == 'VERTICAL':
-                for num, row in enumerate(self.athena.yield_rows(results, headers)):
-                    print('--[RECORD {}]--'.format(num+1))
-                    print(tabulate(zip(*[headers, row]), tablefmt='presto'))
-            else:  # ALIGNED
-                print(tabulate([x for x in self.athena.yield_rows(results, headers)], headers=headers, tablefmt='presto'))
+            output_results(self.athena, self.format, execution_id, sys.stdout)
 
         if status == 'FAILED':
             print(stats['QueryExecution']['Status']['StateChangeReason'])
@@ -73,27 +91,34 @@ except AttributeError:
 
 class AthenaShell(cmd.Cmd, object):
 
-    multilineCommands = ['WITH', 'SELECT', 'ALTER', 'CREATE', 'DESCRIBE', 'DROP', 'MSCK', 'SHOW', 'USE', 'VALUES']
+    multilineCommands = ['WITH', 'SELECT', 'ALTER', 'CREATE', 'DESCRIBE', 'DROP', 'MSCK', 'SHOW', 'USE', 'VALUES', 'with', 'select', 'alter', 'create', 'describe', 'drop', 'msck', 'show', 'use', 'values']
     allow_cli_args = False
+    service_name = 'datalake'
 
-    def __init__(self, athena, db=None):
+    def __init__(self, athena, db=None, format=None):
         cmd.Cmd.__init__(self)
 
         self.athena = athena
         self.dbname = db
+        self.format = format
 
         self.execution_id = None
 
         self.row_count = 0
 
         self.set_prompt()
-        self.pager = os.environ.get('ATHENA_CLI_PAGER', LESS).split(' ')
+
+        if format == 'TRUNCATE':
+            less = LESS_TRUNC
+        else:
+            less = LESS
+        self.pager = os.environ.get('ATHENA_CLI_PAGER', less).split(' ')
 
         self.hist_file = os.path.join(os.path.expanduser("~"), ".athena_history")
         self.init_history()
 
     def set_prompt(self):
-        self.prompt = 'athena:%s> ' % self.dbname if self.dbname else 'athena> '
+        self.prompt = '%s:%s> ' % (self.service_name, self.dbname) if self.dbname else '%s> ' % self.service_name
 
     def cmdloop_with_cancel(self, intro=None):
         try:
@@ -197,15 +222,8 @@ See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
         sys.stdout.flush()
 
         if status == 'SUCCEEDED':
-            results = self.athena.get_query_results(self.execution_id)
-            headers = [h['Name'] for h in results['ResultSet']['ResultSetMetadata']['ColumnInfo']]
-            row_count = len(results['ResultSet']['Rows'])
-
-            if headers and len(results['ResultSet']['Rows']) and results['ResultSet']['Rows'][0]['Data'][0].get('VarCharValue', None) == headers[0]:
-                row_count -= 1  # don't count header
-
             process = subprocess.Popen(self.pager, stdin=subprocess.PIPE)
-            process.stdin.write(tabulate([x for x in self.athena.yield_rows(results, headers)], headers=headers, tablefmt='presto').encode('utf-8'))
+            row_count = output_results(self.athena, self.format, self.execution_id,  process.stdin)
             process.communicate()
             print('(%s rows)\n' % row_count)
 
@@ -404,7 +422,7 @@ def main():
         batch = AthenaBatch(athena, db=args.schema, format=args.format)
         batch.execute(statement=args.execute)
     else:
-        shell = AthenaShell(athena, db=args.schema)
+        shell = AthenaShell(athena, db=args.schema, format=args.format)
         shell.cmdloop_with_cancel()
 
 if __name__ == '__main__':
