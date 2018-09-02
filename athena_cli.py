@@ -73,7 +73,7 @@ def encode(row, charset):
 
 class AthenaBatch(object):
 
-    def __init__(self, athena, db=None, format='CSV'):
+    def __init__(self, athena, db=None, format=None):
         self.athena = athena
         self.dbname = db
         self.format = 'CSV' if format is None else format
@@ -112,21 +112,16 @@ class AthenaShell(cmd.Cmd, object):
     def __init__(self, athena, db=None, format=None):
         cmd.Cmd.__init__(self)
 
+        # allow setting of the output format interactivately
+        self.settable['format'] = 'Output format';
+
         self.athena = athena
         self.dbname = db
-        self.format = format
+        self.format = 'ALIGNED' if format is None else format
 
         self.execution_id = None
 
-        self.row_count = 0
-
         self.set_prompt()
-
-        if format == 'TRUNCATE':
-            less = LESS_TRUNC
-        else:
-            less = LESS
-        self.pager = os.environ.get('ATHENA_CLI_PAGER', less).split(' ')
 
         self.hist_file = os.path.join(os.path.expanduser("~"), ".athena_history")
         self.init_history()
@@ -216,6 +211,8 @@ See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
             param_name = param_name.strip().lower()
             if param_name == 'debug':
                 self.athena.debug = cmd.cast(True, val)
+            elif param_name == 'format':
+                arg = "format " + val.upper()
         except (ValueError, AttributeError):
             self.do_show(arg)
         super(AthenaShell, self).do_set(arg)
@@ -239,7 +236,9 @@ See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
         sys.stdout.flush()
 
         if status == 'SUCCEEDED':
-            process = subprocess.Popen(self.pager, stdin=subprocess.PIPE)
+            less = LESS_TRUNC if self.format == 'TRUNCATE' else LESS
+            pager = os.environ.get('ATHENA_CLI_PAGER', less).split(' ')
+            process = subprocess.Popen(pager, stdin=subprocess.PIPE)
             row_count = output_results(self.athena, self.format, self.execution_id, process.stdin, True)
             process.communicate()
             print('(%s rows)\n' % row_count)
