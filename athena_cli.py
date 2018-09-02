@@ -109,7 +109,7 @@ class AthenaShell(cmd.Cmd, object):
 
     multilineCommands = ['WITH', 'SELECT', 'ALTER', 'CREATE', 'DESCRIBE', 'DROP', 'MSCK', 'SHOW', 'USE', 'VALUES', 'with', 'select', 'alter', 'create', 'describe', 'drop', 'msck', 'show', 'use', 'values']
     allow_cli_args = False
-    service_name = 'datalake'
+    service_name = 'athena'
 
     def __init__(self, athena, db=None, format=None):
         cmd.Cmd.__init__(self)
@@ -270,7 +270,7 @@ class Athena(object):
     def __init__(self, profile, region=None, bucket=None, debug=False, encryption=False):
 
         self.session = boto3.Session(profile_name=profile, region_name=region)
-        session_config = botocore.config.Config(user_agent='bt-sql-datalake')
+        session_config = botocore.config.Config(user_agent='athena-cli')
         self.athena = self.session.client('athena', config=session_config)
 
         self.region = region or os.environ.get('AWS_DEFAULT_REGION', None) or self.session.region_name
