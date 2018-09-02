@@ -24,20 +24,14 @@ HISTORY_FILE_SIZE = 500
 __version__ = '0.1.8-bt'
 
 def output_results(athena, format, execution_id, output, is_shell):
-    is_csv = format in ['CSV', 'CSV_HEADER', 'TSV', 'TSV_HEADER']
-
-    #tabulate() only supports ascii
-    charset = 'utf-8' if is_csv else 'ascii'
-
-    results = athena.get_query_results(execution_id, charset)
+    results = athena.get_query_results(execution_id)
     headers = results[0]
-
     counter = itertools.count(start=1)
     rows = itertools.izip(results[1], counter)
     count = 0
 
     try:
-        if is_csv:
+        if format in ['CSV', 'CSV_HEADER', 'TSV', 'TSV_HEADER']:
             if format in ['TSV', 'TSV_HEADER']:
                 delim = '\t'
                 quote = csv.QUOTE_NONE
@@ -50,18 +44,18 @@ def output_results(athena, format, execution_id, output, is_shell):
             csv_writer = csv.writer(output, delimiter=delim, quoting=quote, escapechar=esc)
 
             if format in ['CSV_HEADER', 'TSV_HEADER']:
-                csv_writer.writerow(headers)
-            csv_writer.writerows([[text for text in row] for row, count in rows])
+                csv_writer.writerow(encode(headers, 'utf-8'))
+            csv_writer.writerows([encode(row, 'utf-8') for row, count in rows])
 
         elif format == 'VERTICAL':
             for row, count in rows:
                 output.write('--[RECORD {}]--'.format(count))
                 output.write('\n')
-                output.write(tabulate(zip(*[headers, row]), tablefmt='presto'))
+                output.write(tabulate(zip(*[headers, row]), tablefmt='presto').encode('utf-8'))
                 output.write('\n')
 
         else:  # ALIGNED
-            output.write(tabulate([row for row, count in rows], headers=headers, tablefmt='presto'))
+            output.write(tabulate([row for row, count in rows], headers=headers, tablefmt='presto').encode('utf-8'))
             output.write('\n')
 
         output.flush()
@@ -73,12 +67,16 @@ def output_results(athena, format, execution_id, output, is_shell):
     return count
 
 
+def encode(row, charset):
+    return [val.encode(charset) for val in row]
+
+
 class AthenaBatch(object):
 
     def __init__(self, athena, db=None, format='CSV'):
         self.athena = athena
         self.dbname = db
-        self.format = format
+        self.format = 'CSV' if format is None else format
 
     def execute(self, statement):
         execution_id = self.athena.start_query_execution(self.dbname, statement)
@@ -109,7 +107,7 @@ class AthenaShell(cmd.Cmd, object):
 
     multilineCommands = ['WITH', 'SELECT', 'ALTER', 'CREATE', 'DESCRIBE', 'DROP', 'MSCK', 'SHOW', 'USE', 'VALUES', 'with', 'select', 'alter', 'create', 'describe', 'drop', 'msck', 'show', 'use', 'values']
     allow_cli_args = False
-    service_name = 'athena'
+    service_name = 'datalake'
 
     def __init__(self, athena, db=None, format=None):
         cmd.Cmd.__init__(self)
@@ -270,7 +268,7 @@ class Athena(object):
     def __init__(self, profile, region=None, bucket=None, debug=False, encryption=False):
 
         self.session = boto3.Session(profile_name=profile, region_name=region)
-        session_config = botocore.config.Config(user_agent='athena-cli')
+        session_config = botocore.config.Config(user_agent='bt-sql-datalake')
         self.athena = self.session.client('athena', config=session_config)
 
         self.region = region or os.environ.get('AWS_DEFAULT_REGION', None) or self.session.region_name
@@ -317,7 +315,7 @@ class Athena(object):
         except ClientError as e:
             print(e)
 
-    def get_query_results(self, execution_id, charset):
+    def get_query_results(self, execution_id):
         try:
             results = None
             paginator = self.athena.get_paginator('get_query_results')
@@ -329,9 +327,9 @@ class Athena(object):
             pages = iter(page_iterator)
             first_page = pages.next() # get first page so we can retrieve metadata for header
 
-            headers = list(h['Name'].encode(charset, "backslashreplace") for h in first_page['ResultSet']['ResultSetMetadata']['ColumnInfo'])
-            first_row = None if len(first_page['ResultSet']['Rows']) == 0 else list(Athena.get_col_value(col, charset) for col in first_page['ResultSet']['Rows'][0]['Data'])
-            rows = Athena.yield_rows(first_page, pages, charset)
+            headers = list(h['Name'] for h in first_page['ResultSet']['ResultSetMetadata']['ColumnInfo'])
+            first_row = None if len(first_page['ResultSet']['Rows']) == 0 else list(self.get_col_value(col) for col in first_page['ResultSet']['Rows'][0]['Data'])
+            rows = self.yield_rows(first_page, pages)
 
             # certain requests return the header as the first row, so skip it
             if first_row == headers:
@@ -356,16 +354,16 @@ class Athena(object):
             sys.exit(e)
 
     @staticmethod
-    def get_col_value(col, charset):
-        return col.get('VarCharValue', 'NULL').encode(charset, "backslashreplace")
+    def get_col_value(col):
+        return col.get('VarCharValue', 'NULL')
 
     @staticmethod
-    def yield_rows(first_page, pages, charset):
+    def yield_rows(first_page, pages):
         for row in first_page['ResultSet']['Rows']:
-            yield [Athena.get_col_value(col, charset) for col in row['Data']]
+            yield [Athena.get_col_value(col) for col in row['Data']]
         for page in pages:
             for row in page['ResultSet']['Rows']:
-                yield [Athena.get_col_value(col, charset) for col in row['Data']]
+                yield [Athena.get_col_value(col) for col in row['Data']]
 
     def console_link(self, execution_id):
         return 'https://{0}.console.aws.amazon.com/athena/home?force&region={0}#query/history/{1}'.format(self.region, execution_id)
