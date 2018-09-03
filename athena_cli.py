@@ -21,7 +21,7 @@ LESS = "less -FXRn"
 LESS_TRUNC = "less -FXRSn"
 HISTORY_FILE_SIZE = 500
 
-__version__ = '0.1.8-bt'
+__version__ = '0.2.0'
 
 def output_results(athena, format, execution_id, output, is_shell):
     results = athena.get_query_results(execution_id)
