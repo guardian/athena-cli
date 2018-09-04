@@ -91,7 +91,7 @@ class AthenaBatch(object):
             time.sleep(0.2)  # 200ms
 
         if status == 'SUCCEEDED':
-            output_results(self.athena, self.format, execution_id, sys.stdout, False)
+            output_results(self.athena, self.format, execution_id, sys.stdout, is_shell=False)
 
         if status == 'FAILED':
             print(stats['QueryExecution']['Status']['StateChangeReason'])
@@ -239,7 +239,7 @@ See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
             less = LESS_TRUNC if self.format == 'TRUNCATE' else LESS
             pager = os.environ.get('ATHENA_CLI_PAGER', less).split(' ')
             process = subprocess.Popen(pager, stdin=subprocess.PIPE)
-            row_count = output_results(self.athena, self.format, self.execution_id, process.stdin, True)
+            row_count = output_results(self.athena, self.format, self.execution_id, process.stdin, is_shell=True)
             process.communicate()
             print('(%s rows)\n' % row_count)
 
