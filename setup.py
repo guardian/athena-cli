@@ -1,7 +1,7 @@
 
 from setuptools import setup, find_packages
 
-version = '0.1.8'
+version = '0.2.0'
 
 setup(
     name="athena-cli",
@@ -17,8 +17,8 @@ setup(
     ],
     install_requires=[
         'boto3',
-        'cmd2',
-        'tabulate>=0.8.1'
+        'cmd2>=0.9.4',
+        'tabulate>=0.8.2'
     ],
     include_package_data=True,
     zip_safe=True,
@@ -30,5 +30,6 @@ setup(
     keywords='aws athena presto cli',
     classifiers=[
         'Topic :: Utilities'
-    ]
+    ],
+    python_requires='>=3.5'
 )

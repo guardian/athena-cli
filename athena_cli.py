@@ -229,7 +229,7 @@ See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
         if status == 'SUCCEEDED':
             less = LESS_TRUNC if self.format == 'TRUNCATE' else LESS
             pager = os.environ.get('ATHENA_CLI_PAGER', less).split(' ')
-            process = subprocess.Popen(pager, stdin=subprocess.PIPE, text=True)
+            process = subprocess.Popen(pager, stdin=subprocess.PIPE, universal_newlines=True)
             row_count = output_results(self.athena, self.format, self.execution_id, process.stdin, is_shell=True)
             process.communicate()
             print('(%s rows)\n' % row_count)
