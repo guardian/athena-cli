@@ -305,8 +305,9 @@ class Athena(object):
             print(e)
 
     def get_query_results(self, execution_id):
+        headers = None
+        results = None
         try:
-            results = None
             paginator = self.athena.get_paginator('get_query_results')
             page_iterator = paginator.paginate(
                 QueryExecutionId=execution_id,
@@ -324,13 +325,13 @@ class Athena(object):
             if first_row == headers:
                 next(rows)
 
-            if self.debug:
-                print(json.dumps(results, indent=2))
-
-            return (headers, rows)
-
         except ClientError as e:
             sys.exit(e)
+
+        if self.debug:
+            print(json.dumps(results, indent=2))
+
+        return (headers, rows)
 
 
     def stop_query_execution(self, execution_id):
