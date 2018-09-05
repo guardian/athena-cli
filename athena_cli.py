@@ -94,7 +94,8 @@ class AthenaBatch(object):
 
 class AthenaShell(cmd.Cmd, object):
 
-    multiline_commands = ['WITH', 'SELECT', 'ALTER', 'CREATE', 'DESCRIBE', 'DROP', 'MSCK', 'SHOW', 'USE', 'VALUES', 'with', 'select', 'alter', 'create', 'describe', 'drop', 'msck', 'show', 'use', 'values']
+    multiline_commands = ['WITH', 'SELECT', 'ALTER', 'CREATE', 'DESCRIBE', 'DROP', 'MSCK', 'SHOW', 'USE', 'VALUES']
+    multiline_commands.extend([c.lower() for c in multiline_commands])
     allow_cli_args = False
     service_name = 'athena'
 
