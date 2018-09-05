@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 
 import argparse
 import atexit
@@ -10,6 +11,7 @@ import sys
 import time
 import uuid
 import itertools
+import io
 
 import boto3
 import botocore
@@ -27,8 +29,7 @@ def output_results(athena, format, execution_id, output, is_shell):
     results = athena.get_query_results(execution_id)
     headers = results[0]
     counter = itertools.count(start=1)
-    rows = itertools.izip(results[1], counter)
-    count = 0
+    rows = zip(results[1], counter)
 
     try:
         if format in ['CSV', 'CSV_HEADER', 'TSV', 'TSV_HEADER']:
@@ -44,18 +45,18 @@ def output_results(athena, format, execution_id, output, is_shell):
             csv_writer = csv.writer(output, delimiter=delim, quoting=quote, escapechar=esc)
 
             if format in ['CSV_HEADER', 'TSV_HEADER']:
-                csv_writer.writerow(encode(headers, 'utf-8'))
-            csv_writer.writerows([encode(row, 'utf-8') for row, count in rows])
+                csv_writer.writerow(headers)
+            csv_writer.writerows([row for row, count in rows])
 
         elif format == 'VERTICAL':
             for row, count in rows:
                 output.write('--[RECORD {}]--'.format(count))
                 output.write('\n')
-                output.write(tabulate(zip(*[headers, row]), tablefmt='presto').encode('utf-8'))
+                output.write(tabulate(zip(*[headers, row]), tablefmt='presto'))
                 output.write('\n')
 
         else:  # ALIGNED
-            output.write(tabulate([row for row, count in rows], headers=headers, tablefmt='presto').encode('utf-8'))
+            output.write(tabulate([row for row, count in rows], headers=headers, tablefmt='presto'))
             output.write('\n')
 
         output.flush()
@@ -64,11 +65,7 @@ def output_results(athena, format, execution_id, output, is_shell):
         if not is_shell:
             raise x
 
-    return count
-
-
-def encode(row, charset):
-    return [val.encode(charset) for val in row]
+    return next(counter) - 1
 
 
 class AthenaBatch(object):
@@ -96,16 +93,10 @@ class AthenaBatch(object):
         if status == 'FAILED':
             print(stats['QueryExecution']['Status']['StateChangeReason'])
 
-try:
-    del cmd.Cmd.do_show  # "show" is an Athena command
-except AttributeError:
-    # "show" was removed from Cmd2 0.8.0
-    pass
-
 
 class AthenaShell(cmd.Cmd, object):
 
-    multilineCommands = ['WITH', 'SELECT', 'ALTER', 'CREATE', 'DESCRIBE', 'DROP', 'MSCK', 'SHOW', 'USE', 'VALUES', 'with', 'select', 'alter', 'create', 'describe', 'drop', 'msck', 'show', 'use', 'values']
+    multiline_commands = ['WITH', 'SELECT', 'ALTER', 'CREATE', 'DESCRIBE', 'DROP', 'MSCK', 'SHOW', 'USE', 'VALUES', 'with', 'select', 'alter', 'create', 'describe', 'drop', 'msck', 'show', 'use', 'values']
     allow_cli_args = False
     service_name = 'athena'
 
@@ -206,7 +197,7 @@ See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
 
     def do_set(self, arg):
         try:
-            statement, param_name, val = arg.parsed.raw.split(None, 2)
+            statement, param_name, val = arg.raw.split(None, 2)
             val = val.strip()
             param_name = param_name.strip().lower()
             if param_name == 'debug':
@@ -214,11 +205,11 @@ See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
             elif param_name == 'format':
                 arg = "format " + val.upper()
         except (ValueError, AttributeError):
-            self.do_show(arg)
+            pass
         super(AthenaShell, self).do_set(arg)
 
     def default(self, line):
-        self.execution_id = self.athena.start_query_execution(self.dbname, line.full_parsed_statement())
+        self.execution_id = self.athena.start_query_execution(self.dbname, line.raw)
         if not self.execution_id:
             return
 
@@ -238,7 +229,7 @@ See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
         if status == 'SUCCEEDED':
             less = LESS_TRUNC if self.format == 'TRUNCATE' else LESS
             pager = os.environ.get('ATHENA_CLI_PAGER', less).split(' ')
-            process = subprocess.Popen(pager, stdin=subprocess.PIPE)
+            process = subprocess.Popen(pager, stdin=subprocess.PIPE, text=True)
             row_count = output_results(self.athena, self.format, self.execution_id, process.stdin, is_shell=True)
             process.communicate()
             print('(%s rows)\n' % row_count)
@@ -324,7 +315,7 @@ class Athena(object):
             )
 
             pages = iter(page_iterator)
-            first_page = pages.next() # get first page so we can retrieve metadata for header
+            first_page = next(pages) # get first page so we can retrieve metadata for header
 
             headers = list(h['Name'] for h in first_page['ResultSet']['ResultSetMetadata']['ColumnInfo'])
             first_row = None if len(first_page['ResultSet']['Rows']) == 0 else list(self.get_col_value(col) for col in first_page['ResultSet']['Rows'][0]['Data'])
@@ -332,7 +323,7 @@ class Athena(object):
 
             # certain requests return the header as the first row, so skip it
             if first_row == headers:
-                rows.next()
+                next(rows)
 
             return (headers, rows)
 
