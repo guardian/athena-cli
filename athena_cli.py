@@ -324,15 +324,14 @@ class Athena(object):
             if first_row == headers:
                 next(rows)
 
+            if self.debug:
+                print(json.dumps(results, indent=2))
+
             return (headers, rows)
 
         except ClientError as e:
             sys.exit(e)
 
-        if self.debug:
-            print(json.dumps(results, indent=2))
-
-        return results
 
     def stop_query_execution(self, execution_id):
         try:
