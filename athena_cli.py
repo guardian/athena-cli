@@ -71,7 +71,7 @@ class AthenaBatch(object):
     def __init__(self, athena, db=None, format=None):
         self.athena = athena
         self.dbname = db
-        self.format = 'CSV' if format is None else format
+        self.format = format or 'CSV'
 
     def execute(self, statement):
         execution_id = self.athena.start_query_execution(self.dbname, statement)
@@ -107,7 +107,7 @@ class AthenaShell(cmd.Cmd, object):
 
         self.athena = athena
         self.dbname = db
-        self.format = 'ALIGNED' if format is None else format
+        self.format = format or 'ALIGNED'
 
         self.execution_id = None
 
