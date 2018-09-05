@@ -11,7 +11,6 @@ import sys
 import time
 import uuid
 import itertools
-import io
 
 import boto3
 import botocore
