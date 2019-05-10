@@ -64,12 +64,6 @@ class AthenaBatch(object):
         if status == 'FAILED':
             print(stats['QueryExecution']['Status']['StateChangeReason'])
 
-try:
-    del cmd.Cmd.do_show  # "show" is an Athena command
-except AttributeError:
-    # "show" was removed from Cmd2 0.8.0
-    pass
-
 
 class AthenaShell(cmd.Cmd, object):
 
@@ -179,7 +173,7 @@ See http://docs.aws.amazon.com/athena/latest/ug/language-reference.html
         super(AthenaShell, self).do_set(arg)
 
     def default(self, line):
-        self.execution_id = self.athena.start_query_execution(self.dbname, line.full_parsed_statement())
+        self.execution_id = self.athena.start_query_execution(self.dbname, line.command_and_args)
         if not self.execution_id:
             return
 
