@@ -349,8 +349,9 @@ def main():
     )
     parser.add_argument(
         '--output-format',
+        choices=('ALIGNED', 'VERTICAL', 'CSV', 'TSV', 'CSV_HEADER', 'TSV_HEADER', 'NULL'),
         dest='format',
-        help='output format for batch mode [ALIGNED, VERTICAL, CSV, TSV, CSV_HEADER, TSV_HEADER, NULL]'
+        help='output format for batch mode'
     )
     parser.add_argument(
         '--schema',
