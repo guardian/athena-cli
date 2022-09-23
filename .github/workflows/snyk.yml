@@ -10,8 +10,7 @@ jobs:
       DEBUG: true
       ORG: guardian-test
       SKIP_NODE: true
-      
-      
-      
+      SKIP_PYTHON: false
+      PIP_REQUIREMENTS_FILES: ./requirements.txt
     secrets:
        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
