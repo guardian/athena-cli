@@ -1,0 +1,19 @@
+name: Snyk
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  security:
+    uses: guardian/.github/.github/workflows/sbt-node-snyk.yml@main
+    with:
+      DEBUG: true
+      ORG: guardian-datalake
+      SKIP_NODE: true
+      SKIP_PYTHON: false
+      PIP_REQUIREMENTS_FILES: ./requirements.txt
+    secrets:
+       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
